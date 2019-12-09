@@ -2,20 +2,19 @@ package com.example.test;
 
 import javafx.util.Pair;
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.net.URISyntaxException;
+import java.util.*;
 
 public class Runner {
-    public static void main(String[] args) throws IOException {
-        BufferedReader reader = new BufferedReader(new FileReader(new File("C:\\Users\\David Grayson\\IdeaProjects\\swagger code gen\\src\\main\\resources\\swagger.json")));
+    public static void main(String[] args) throws IOException, URISyntaxException {
+        BufferedReader reader = new BufferedReader(new FileReader(new File(Runner.class.getClassLoader().getResource("swagger.json").toURI())));
         StringBuilder sb = new StringBuilder();
         String line = reader.readLine();
 
@@ -34,12 +33,6 @@ public class Runner {
 
         List<String> classesInStringForm = generatePojos(objectData);
 
-//        for (String s : pojosInStringForm){
-//            System.out.println("*****************************************");
-//            System.out.println(s);
-//            System.out.println("*****************************************");
-//        }
-
         JSONObject info = (JSONObject) root.get("info");
 
         String workingDirectory = System.getProperty("user.home") + File.separator +
@@ -52,32 +45,96 @@ public class Runner {
 
         //TODO make request super class and pass name to test makers
 
-        JSONArray endpoints = paths.names();
+        Set<String> endpointPaths = paths.keySet();
 
-        for (Object endpoint : endpoints) {
-            if (endpoint instanceof String){
-                JSONObject path = paths.getJSONObject(endpoint.toString());
+        ArrayList<String> requestClasses = new ArrayList<String>();
+        ArrayList<String> responseClasses = new ArrayList<String>();
 
-                JSONArray operations = path.names();
+        for (String s : endpointPaths){
+            JSONObject endpointRQType = paths.getJSONObject(s);
 
-                for (Object op : operations){
-                    String operationsDirectory = workingDirectory + File.separator +
-                            ((String) endpoint).replaceFirst("/","").replaceAll("/", "_") + File.separator +
-                            op.toString();
+            for (String rqType: endpointRQType.keySet()){
+                JSONObject rqSpecifications = endpointRQType.getJSONObject(rqType);
+                StringBuilder classStructureStringBuilder = new StringBuilder();
+                StringBuilder fieldAccessors = new StringBuilder();
 
-                    if ("post".equals(op)) {
-                        JSONObject operation = path.getJSONObject(op.toString());
-                        makePostTest(operation, "", getRequiredCommonObjects(operation, objectData));
-                    } else if ("get".equals(op)){
+                JSONArray parameters = rqSpecifications.getJSONArray("parameters");
 
-                    } else if ("put".equals(op)){
+                if (!parameters.toList().isEmpty()){
+                    //first line of the class declaration
+                    classStructureStringBuilder.append("public class ").append(capitalize(rqSpecifications.getString("operationId"))).append("Request {\n");
+                }
 
-                    } else if ("delete".equals(op)){
+                //extracting parameters for endpoint operation from "parameters" object in swagger json
+                for (Object param : parameters){
+                    if (param instanceof JSONObject){
+                        classStructureStringBuilder.append("\t").append("private ");
 
+                        //switch statement?
+                        if (((JSONObject) param).getString("in").equals("body")){
+
+                            if (((JSONObject) param).has("schema")){
+                                String type = extractDataType(((JSONObject) param).getJSONObject("schema"));
+
+                                classStructureStringBuilder.append(type).append(" ");
+
+                                if (type.contains("<")){
+                                    String name = type.substring(type.indexOf("<"), type.indexOf(">") + 1).toLowerCase();
+                                    classStructureStringBuilder.append(name).append(";\n");
+                                    fieldAccessors.append(generateAccessors(type, name, true));
+                                } else {
+                                    classStructureStringBuilder.append(type.toLowerCase()).append(";\n");
+                                    fieldAccessors.append(generateAccessors(type, type.toLowerCase(), false));
+                                }
+                            }
+                        }
+
+                        if (((JSONObject) param).getString("in").equals("query")){
+
+                        }
+
+                        if (((JSONObject) param).getString("in").equals("path")){
+                            String type = extractDataType((JSONObject) param);
+                            String name = ((JSONObject) param).getString("name");
+
+                            classStructureStringBuilder.append(type).append(" ").append(name).append(";\n");
+                            fieldAccessors.append(generateAccessors(type, name, false));
+                        }
+
+                        if (((JSONObject) param).getString("in").equals("header")){
+
+                        }
+                    } else {
+                        throw new JSONException("Invalid format in parameter array of " + s + " " + rqType);
                     }
+                }
+
+                if (!parameters.toList().isEmpty()){
+                    classStructureStringBuilder.append(fieldAccessors.toString());
+                    classStructureStringBuilder.append("}");
+                    requestClasses.add(classStructureStringBuilder.toString());
                 }
             }
         }
+
+        System.out.println(requestClasses.toString());
+    }
+
+    private static String generateAccessors(String type, String name, boolean isArray) {
+        if (isArray){
+            return "\tpublic ArrayList<" + type + "> get" + type + "{\n"
+                    + "\t\treturn " + type.toLowerCase() + ";\n"
+                    + "\t}\n"
+                    + "\tpublic void set" + type + "(ArrayList<" + type + "> " + type.toLowerCase() + ") " + "{\n"
+                    + "\t\tthis." + type.toLowerCase() + " = " + type.toLowerCase() + "\n"
+                    + "\t}\n";
+        }
+        return "\tpublic " + type + " get" + type + "{\n"
+                + "\t\treturn " + type.toLowerCase() + ";\n"
+                + "\t}\n"
+                + "\tpublic void set" + type + "(" + type + " " + type.toLowerCase() + ") " + "{\n"
+                + "\t\tthis." + type.toLowerCase() + " = " + type.toLowerCase() + "\n"
+                + "\t}\n";
     }
 
     private static void makePostTest(JSONObject op, String superClass, Map<String, List<Pair<String, String>>> commonObjectsRequiredForOperation) {
@@ -234,20 +291,16 @@ public class Runner {
 
     private static Map<String, List<Pair<String, String>>> extractDefinitionData(JSONObject definitions) {
         Map<String, List<Pair<String, String >>> pojos = new HashMap<>();
-        for (Object name : definitions.names()) {
-            if (name instanceof String){
-                JSONObject jsonProperties = definitions.getJSONObject((String) name).getJSONObject("properties");
-                List<Pair<String, String>> fields = new ArrayList<>();
+        for (String name : definitions.keySet()) {
+            JSONObject jsonProperties = definitions.getJSONObject(name).getJSONObject("properties");
+            List<Pair<String, String>> fields = new ArrayList<>();
 
-                for (Object o : jsonProperties.names()) {
-                    if (o instanceof String){
-                        JSONObject jsonPropertyType = jsonProperties.getJSONObject((String) o);
-                        fields.add(new Pair<>(o.toString(), extractDataType(jsonPropertyType)));
-                    }
-                }
-
-                pojos.put(name.toString(), fields);
+            for (String o : jsonProperties.keySet()) {
+                JSONObject jsonPropertyType = jsonProperties.getJSONObject(o);
+                fields.add(new Pair<>(o, extractDataType(jsonPropertyType)));
             }
+
+            pojos.put(name, fields);
         }
         return pojos;
     }
