@@ -8,12 +8,13 @@ import org.json.JSONObject;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class Runner {
-    public static void main(String[] args) throws IOException, URISyntaxException {
+    public static void main(String[] args) throws Exception {
         BufferedReader reader = new BufferedReader(new FileReader(new File(Runner.class.getClassLoader().getResource("swagger.json").toURI())));
         StringBuilder sb = new StringBuilder();
         String line = reader.readLine();
@@ -29,31 +30,77 @@ public class Runner {
 
         Map<String, List<Pair<String, String>>> objectData = extractDefinitionData(root.getJSONObject("definitions"));
 
-        objectData.forEach( (variableName, fields) -> System.out.println(variableName + " = " + fields.toString()));
-
-        List<String> classesInStringForm = generatePojos(objectData);
-
         JSONObject info = (JSONObject) root.get("info");
-
-        String workingDirectory = System.getProperty("user.home") + File.separator +
-                "Desktop" + File.separator +
-                info.getString("title").replace(" ", "_").trim() + File.separator;
-
-        File file = new File(workingDirectory);
 
         JSONObject paths = root.getJSONObject("paths");
 
-        //TODO make request super class and pass name to test makers
+        //TODO make operation super class
 
-        Set<String> endpointPaths = paths.keySet();
+        List<String> commonObjects = generateCommonObjects(objectData);
+        ArrayList<String> requestClasses = generateRequestClasses(paths);
+        ArrayList<String> responseClasses = generateResponseClasses(paths);
 
-        ArrayList<String> requestClasses = new ArrayList<String>();
-        ArrayList<String> responseClasses = new ArrayList<String>();
+        objectData.forEach( (variableName, fields) -> System.out.println(variableName + " = " + fields.toString()));
+        System.out.println(requestClasses.toString());
+        System.out.println(responseClasses.toString());
+    }
 
-        for (String s : endpointPaths){
+    private static ArrayList<String> generateResponseClasses(JSONObject paths) throws Exception {
+        ArrayList<String> responseClasses = new ArrayList<>();
+
+        for (String s : paths.keySet()){
             JSONObject endpointRQType = paths.getJSONObject(s);
 
-            for (String rqType: endpointRQType.keySet()){
+            for (String rqType : endpointRQType.keySet()){
+                JSONObject rqSpecifications = endpointRQType.getJSONObject(rqType);
+
+                if (rqSpecifications.has("responses")){
+                    JSONObject responses = rqSpecifications.getJSONObject("responses");
+
+                    for (String httpResponseCode : responses.keySet()){
+                        JSONObject response = responses.getJSONObject(httpResponseCode);
+
+                        if (response.has("schema")){
+                            String type = extractDataType(response.getJSONObject("schema"));
+                            StringBuilder classStructureStringBuilder = new StringBuilder();
+                            StringBuilder fieldAccessors = new StringBuilder();
+
+                            //first line of the class declaration
+                            classStructureStringBuilder.append("public class ").append(capitalize(rqSpecifications.getString("operationId"))).append("Response {\n");
+
+                            classStructureStringBuilder.append("\t").append("private ").append(type).append(" ");
+
+                            if (type.contains("<")){
+                                String name = type.replace("<", "").replace(">", "").replace(", ", "");
+                                classStructureStringBuilder.append(name).append(";\n");
+                                fieldAccessors.append(generateAccessors(type, name));
+                            } else {
+                                classStructureStringBuilder.append(type.toLowerCase()).append(";\n");
+                                fieldAccessors.append(generateAccessors(type, type.toLowerCase()));
+                            }
+
+                            classStructureStringBuilder.append(fieldAccessors.toString());
+                            classStructureStringBuilder.append("}");
+                            responseClasses.add(classStructureStringBuilder.toString());
+                        }
+                    }
+
+                } else {
+                    throw new Exception("No response defined for " + s + " " + rqType);
+                }
+            }
+        }
+
+        return responseClasses;
+    }
+
+    private static ArrayList<String> generateRequestClasses(JSONObject paths) {
+        ArrayList<String> requestClasses = new ArrayList<>();
+
+        for (String s : paths.keySet()){
+            JSONObject endpointRQType = paths.getJSONObject(s);
+
+            for (String rqType : endpointRQType.keySet()){
                 JSONObject rqSpecifications = endpointRQType.getJSONObject(rqType);
                 StringBuilder classStructureStringBuilder = new StringBuilder();
                 StringBuilder fieldAccessors = new StringBuilder();
@@ -68,42 +115,24 @@ public class Runner {
                 //extracting parameters for endpoint operation from "parameters" object in swagger json
                 for (Object param : parameters){
                     if (param instanceof JSONObject){
+                        String name = ((JSONObject) param).getString("name");
                         classStructureStringBuilder.append("\t").append("private ");
 
-                        //switch statement?
-                        if (((JSONObject) param).getString("in").equals("body")){
-
-                            if (((JSONObject) param).has("schema")){
-                                String type = extractDataType(((JSONObject) param).getJSONObject("schema"));
-
-                                classStructureStringBuilder.append(type).append(" ");
-
-                                if (type.contains("<")){
-                                    String name = type.substring(type.indexOf("<"), type.indexOf(">") + 1).toLowerCase();
-                                    classStructureStringBuilder.append(name).append(";\n");
-                                    fieldAccessors.append(generateAccessors(type, name, true));
-                                } else {
-                                    classStructureStringBuilder.append(type.toLowerCase()).append(";\n");
-                                    fieldAccessors.append(generateAccessors(type, type.toLowerCase(), false));
-                                }
-                            }
+                        String type = "";
+                        if (((JSONObject) param).has("schema")){
+                            type = extractDataType(((JSONObject) param).getJSONObject("schema"));
+                        } else {
+                            type = extractDataType((JSONObject) param);
                         }
 
-                        if (((JSONObject) param).getString("in").equals("query")){
-
+                        if (type.contains("{")){
+                            type = type.substring(0, type.indexOf("{"));
                         }
 
-                        if (((JSONObject) param).getString("in").equals("path")){
-                            String type = extractDataType((JSONObject) param);
-                            String name = ((JSONObject) param).getString("name");
+                        classStructureStringBuilder.append(type).append(" ");
 
-                            classStructureStringBuilder.append(type).append(" ").append(name).append(";\n");
-                            fieldAccessors.append(generateAccessors(type, name, false));
-                        }
-
-                        if (((JSONObject) param).getString("in").equals("header")){
-
-                        }
+                        classStructureStringBuilder.append(name).append(";\n");
+                        fieldAccessors.append(generateAccessors(type, name));
                     } else {
                         throw new JSONException("Invalid format in parameter array of " + s + " " + rqType);
                     }
@@ -116,193 +145,132 @@ public class Runner {
                 }
             }
         }
-
-        System.out.println(requestClasses.toString());
-    }
-
-    private static String generateAccessors(String type, String name, boolean isArray) {
-        if (isArray){
-            return "\tpublic ArrayList<" + type + "> get" + type + "{\n"
-                    + "\t\treturn " + type.toLowerCase() + ";\n"
-                    + "\t}\n"
-                    + "\tpublic void set" + type + "(ArrayList<" + type + "> " + type.toLowerCase() + ") " + "{\n"
-                    + "\t\tthis." + type.toLowerCase() + " = " + type.toLowerCase() + "\n"
-                    + "\t}\n";
-        }
-        return "\tpublic " + type + " get" + type + "{\n"
-                + "\t\treturn " + type.toLowerCase() + ";\n"
-                + "\t}\n"
-                + "\tpublic void set" + type + "(" + type + " " + type.toLowerCase() + ") " + "{\n"
-                + "\t\tthis." + type.toLowerCase() + " = " + type.toLowerCase() + "\n"
-                + "\t}\n";
-    }
-
-    private static void makePostTest(JSONObject op, String superClass, Map<String, List<Pair<String, String>>> commonObjectsRequiredForOperation) {
-        StringBuilder stringBuilder = new StringBuilder();
-
-        // import statements
-        String testngAnnotationImport = "import org.testng.annotations.";
-        stringBuilder.append(testngAnnotationImport).append("BeforeMethod;\n")
-                .append(testngAnnotationImport).append("Parameters;\n")
-                .append(testngAnnotationImport).append("Test;\n");
-
-        // beginning of class declaration
-        stringBuilder.append("public class Test").append(capitalize(op.getString("operationId"))).append("_Rest");
-
-        // make class extend super class if one was passed
-        if (superClass != null && !superClass.isEmpty()){
-            stringBuilder.append(" extends ").append(superClass).append("{\n");
-        } else {
-            stringBuilder.append("{\n");
-        }
-
-        // annotations for the setup method
-        stringBuilder.append("\t@Override\n\t@BeforeMethod(alwaysRun = true)\n\t@Parameters(\"environment\")\n");
-
-        // basic setup method
-        stringBuilder.append("\tpublic void setup(String environment) {\n\t\tsetEnvironment(environment);\n\t}\n\n");
-
-        // beginning of test method
-        stringBuilder.append("\t@Test()\n\tpublic void test").append(op.getString("operationId")).append("_Rest(){\n");
-
-        // TODO variables for the test
-        stringBuilder.append("\t\t");
-    }
-
-    private static Map<String, List<Pair<String, String>>> getRequiredCommonObjects(JSONObject operation, Map<String, List<Pair<String, String>>> objectData){
-        Map<String, List<Pair<String, String>>> commonObjectsRequiredForOperation = new HashMap<>();
-
-        for (Object o : operation.getJSONArray("parameters")){
-            if (o instanceof JSONObject){
-                String commonObjectName = extractDataType(((JSONObject) o).getJSONObject("schema"));
-                commonObjectsRequiredForOperation.put(commonObjectName, objectData.get(commonObjectName));
-            }
-        }
-
-        return commonObjectsRequiredForOperation;
+        return requestClasses;
     }
 
     private static String capitalize(String s) {
         return s.substring(0,1).toUpperCase() + s.substring(1);
     }
 
-    private static List<String> generatePojos(Map<String, List<Pair<String, String>>> objectData){
-        List<String> pojosInStringForm = new ArrayList<>();
+    private static List<String> generateCommonObjects(Map<String, List<Pair<String, String>>> objectData){
+        List<String> commonObjectsInStringForm = new ArrayList<>();
 
         for (String name : objectData.keySet()){
             List<Pair<String, String>> fields = objectData.get(name);
             StringBuilder stringBuilder = new StringBuilder();
 
             // extracts the enum values
-            for (Pair<String, String> pair : fields){
-                if (pair.getValue().contains("{")){
-                    //grabs the comma delimited enum values specified in the swagger
-                    String[] enumValues = pair.getValue().substring(pair.getValue().indexOf("{"), pair.getValue().indexOf("}")+1)
-                            .replace("{","").replace("}","").split(",");
-                    String enumName = name + capitalize(pair.getKey()); // Capitalizes the name of the variable the enum is named after
-                    String type = pair.getValue().substring(0, pair.getValue().indexOf("{"));
-                    String fieldName = pair.getKey();
+            if (name.contains("Enum")){
+                stringBuilder.append("public enum ").append(name).append("{\n");
 
-                    stringBuilder.append("public enum ").append(enumName).append("{\n");
-
-                    // write the enum values
-                    for (String value : enumValues){
-                        stringBuilder.append("\t").append(value.toUpperCase()).append("(\"").append(value).append("\"),\n");
-                    }
-
-                    int i = stringBuilder.lastIndexOf(",");
-
-                    stringBuilder.deleteCharAt(i); // removes the last comma from the list of enum values
-                    stringBuilder.insert(i, ";\n");
-
-                    stringBuilder.append("\tprivate ").append(type)
-                            .append(" ").append(fieldName).append(";\n\n"); //the string value for the enum
-
-                    // enum constructor
-                    stringBuilder.append("\t")
-                            .append(enumName)
-                            .append("(").append(type).append(" ").append(fieldName).append("){\n")
-                            .append("\t\tthis.").append(fieldName).append(" = ").append(fieldName).append(";\n\t}\n}\n\n");
-
-                    // replace the Key from the Pair to be the newly created Enum
-                    fields.set(fields.indexOf(pair), new Pair<>(fieldName, enumName));
-
-                    pojosInStringForm.add(stringBuilder.toString());
-                    stringBuilder = new StringBuilder();
+                for (Pair<String, String> pair : fields){
+                    stringBuilder.append(pair.getKey()).append("(\"").append(pair.getValue()).append("\"),\n");
                 }
+
+                int i = stringBuilder.lastIndexOf(",");
+
+                stringBuilder.deleteCharAt(i);
+                stringBuilder.insert(i, ";\n");
+
+                //internal string variable for enum
+                stringBuilder.append("\tprivate String s;\n");
+
+                // enum constructor
+                    stringBuilder.append("\t")
+                            .append(name)
+                            .append("(String s){\n")
+                            .append("\t\tthis.s = s;\n\t}\n}\n\n");
+
+            } else {
+                // start of pojo class
+                stringBuilder.append("public class ").append(name).append(" {\n");
+
+                // declaring global variables
+                for (Pair<String, String> pair : fields){
+                    stringBuilder.append("\tprivate ").append(pair.getValue()).append(" ").append(pair.getKey()).append(";\n");
+                }
+
+                // empty constructor
+                stringBuilder.append("\t").append(name).append("(){}").append("\n\n");
+
+                // constructor with all fields
+                stringBuilder.append("\t").append(name).append("(");
+
+                // declaring the fields in the constructor method signature
+                for (Pair<String, String> field : fields) {
+                    stringBuilder.append(field.getValue())
+                            .append(" ")
+                            .append(field.getKey())
+                            .append(",");
+                }
+
+                stringBuilder.deleteCharAt(stringBuilder.lastIndexOf(",")) // deletes the last ", " from the above loop
+                        .append("){\n");
+
+                // setting the classes globals to the constructor values
+                for (Pair<String, String> pair : fields){
+                    stringBuilder.append("\t\tthis.").append(pair.getKey()).append(" = ").append(pair.getKey()).append(";\n");
+                }
+
+                // end of the full constructor
+                stringBuilder.append("\t}\n\n");
+
+                // make getters
+                for (Pair<String, String> pair : fields){
+                    String varName = capitalize(pair.getKey());
+                    stringBuilder.append("\tpublic ").append(pair.getValue()) // return type
+                            .append(" get").append(varName).append("(){\n") // name of getter
+                            .append("\t\treturn this.").append(pair.getKey()).append(";\n\t}\n\n"); // return statement
+                }
+
+                // make setters
+                for (Pair<String, String> pair : fields){
+                    String varName = capitalize(pair.getKey());
+                    stringBuilder.append("\tpublic void set").append(varName) // name of setter
+                            .append("(").append(pair.getValue()).append(" ").append(pair.getKey()).append("){\n") // method parameter
+                            .append("\t\tthis.").append(pair.getKey()).append(" = ").append(pair.getKey()).append("\n\t}\n\n"); // actual setting of the field
+                }
+
+                stringBuilder.append("}"); // last curly brace
             }
-
-            // start of pojo class
-            stringBuilder.append("public class ").append(name).append(" {\n");
-
-            // declaring global variables
-            for (Pair<String, String> pair : fields){
-                stringBuilder.append("\tprivate ").append(pair.getValue()).append(" ").append(pair.getKey()).append(";\n");
-            }
-
-            // empty constructor
-            stringBuilder.append("\t").append(name).append("(){}").append("\n\n");
-
-            // constructor with all fields
-            stringBuilder.append("\t").append(name).append("(");
-
-            // declaring the fields in the constructor method signature
-            for (Pair<String, String> field : fields) {
-                stringBuilder.append(field.getValue())
-                        .append(" ")
-                        .append(field.getKey())
-                        .append(",");
-            }
-
-            stringBuilder.deleteCharAt(stringBuilder.lastIndexOf(",")) // deletes the last ", " from the above loop
-                    .append("){\n");
-
-            // setting the classes globals to the constructor values
-            for (Pair<String, String> pair : fields){
-                stringBuilder.append("\t\tthis.").append(pair.getKey()).append(" = ").append(pair.getKey()).append(";\n");
-            }
-
-            // end of the full constructor
-            stringBuilder.append("\t}\n\n");
-
-            // make getters
-            for (Pair<String, String> pair : fields){
-                String varName = capitalize(pair.getKey());
-                stringBuilder.append("\tpublic ").append(pair.getValue()) // return type
-                        .append(" get").append(varName).append("(){\n") // name of getter
-                        .append("\t\treturn this.").append(pair.getKey()).append(";\n\t}\n\n"); // return statement
-            }
-
-            // make setters
-            for (Pair<String, String> pair : fields){
-                String varName = capitalize(pair.getKey());
-                stringBuilder.append("\tpublic void set").append(varName) // name of setter
-                        .append("(").append(pair.getValue()).append(" ").append(pair.getKey()).append("){\n") // method parameter
-                        .append("\t\tthis.").append(pair.getKey()).append(" = ").append(pair.getKey()).append("\n\t}\n\n"); // actual setting of the field
-            }
-
-            stringBuilder.append("}"); // last curly brace
-
-            pojosInStringForm.add(stringBuilder.toString());
+            commonObjectsInStringForm.add(stringBuilder.toString());
         }
 
-        return pojosInStringForm;
+        return commonObjectsInStringForm;
     }
 
     private static Map<String, List<Pair<String, String>>> extractDefinitionData(JSONObject definitions) {
-        Map<String, List<Pair<String, String >>> pojos = new HashMap<>();
+        Map<String, List<Pair<String, String >>> commonObjects = new HashMap<>();
+
         for (String name : definitions.keySet()) {
             JSONObject jsonProperties = definitions.getJSONObject(name).getJSONObject("properties");
             List<Pair<String, String>> fields = new ArrayList<>();
 
-            for (String o : jsonProperties.keySet()) {
-                JSONObject jsonPropertyType = jsonProperties.getJSONObject(o);
-                fields.add(new Pair<>(o, extractDataType(jsonPropertyType)));
-            }
+            for (String propertyName : jsonProperties.keySet()) {
+                JSONObject jsonPropertyType = jsonProperties.getJSONObject(propertyName);
+                String type = extractDataType(jsonPropertyType);
 
-            pojos.put(name, fields);
+                // check if it's an enum value
+                if (type.contains("{")){
+                    String[] enumValues = type.substring(type.indexOf("{"), type.indexOf("}")+1)
+                            .replace("{","").replace("}","").split(",");
+                    String enumName = name + capitalize(propertyName) + "Enum";
+                    List<Pair<String, String>> enumFields = new ArrayList<>();
+
+                    for (String value : enumValues){
+                        enumFields.add(new Pair<>(value.toUpperCase(), value));
+                    }
+
+                    commonObjects.put(enumName, enumFields);
+
+                    fields.add(new Pair<>(propertyName,enumName));
+                } else {
+                    fields.add(new Pair<>(propertyName, type));
+                }
+            }
+            commonObjects.put(name, fields);
         }
-        return pojos;
+        return commonObjects;
     }
 
     private static String extractDataType(JSONObject jsonPropertyType) {
@@ -349,6 +317,18 @@ public class Runner {
 
                 dataType = dataTypeBuilder.toString();
             }
+
+            // Object check
+            // I'm assuming that all objects will be a container around a list of their "additionalProperties"
+            // which can be represented as a Pair<String, additionalPropertyType>
+            if (jsonPropertyType.getString("type").equals("object")){
+                dataType = "ArrayList<Pair<String, " + extractDataType(jsonPropertyType.getJSONObject("additionalProperties")) + ">";
+            }
+
+            // File check
+            if (jsonPropertyType.getString("type").equals("file")){
+                dataType = "File";
+            }
         }
 
         // $ref case
@@ -358,5 +338,14 @@ public class Runner {
         }
 
         return dataType;
+    }
+
+    private static String generateAccessors(String type, String name) {
+        return "\tpublic " + type + " get" + capitalize(name) + "{\n"
+                + "\t\treturn " + name + ";\n"
+                + "\t}\n"
+                + "\tpublic void set" + capitalize(name) + "(" + type + " " + name + ") " + "{\n"
+                + "\t\tthis." + name + " = " + name + "\n"
+                + "\t}\n";
     }
 }
