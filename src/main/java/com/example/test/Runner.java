@@ -20,7 +20,7 @@ public class Runner {
         TestFactory testFactory = new TestFactory(company);
 
 
-        JSONObject root = FileHelper.readJsonFileIntoObject(Runner.class.getClassLoader().getResource("swagger.json").toURI().getPath());
+        JSONObject root = FileHelper.readJsonFileIntoObject(Runner.class.getClassLoader().getResource("other.json").toURI().getPath());
 
         Map<String, List<Pair<String, String>>> objectData = commonObjectsFactory.extractDefinitionData(root.getJSONObject("definitions"));
 
@@ -35,11 +35,11 @@ public class Runner {
         ArrayList<String> responseClasses = responseFactory.generateResponseClasses(paths, objectData, info.getString("title").replace(" ", ""));
 
 //        objectData.forEach( (variableName, fields) -> System.out.println(variableName + " = " + fields.toString()));
-        System.out.println(commonObjects.toString());
-        System.out.println(requestClasses.toString());
-        System.out.println(responseClasses.toString());
-        System.out.println(operationClasses.toString());
-        System.out.println(testClasses.toString());
+//        System.out.println(commonObjects.toString());
+//        System.out.println(requestClasses.toString());
+//        System.out.println(responseClasses.toString());
+//        System.out.println(operationClasses.toString());
+//        System.out.println(testClasses.toString());
 
         FileHelper.writeToFiles(operationClasses, testClasses, commonObjects, requestClasses, responseClasses);
     }

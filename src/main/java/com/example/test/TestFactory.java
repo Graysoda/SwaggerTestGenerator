@@ -23,7 +23,7 @@ public class TestFactory {
         importFactory = new ImportFactory(company);
     }
 
-    public ArrayList<String> generateTestClasses(JSONObject paths, String serviceName, Map<String, List<Pair<String, String>>> objectData) {
+    public ArrayList<String> generateTestClasses(JSONObject paths, String serviceName, Map<String, List<Pair<String, String>>> objectData) throws Exception {
         ArrayList<String> testClasses = new ArrayList<>();
 
         for (String endpointPath : paths.keySet()){
@@ -50,7 +50,9 @@ public class TestFactory {
                     testClassBuilder.append("\n\t@Test()\n");
                     testClassBuilder.append("\tpublic void test").append(capitalize(rqSpecs.getString("operationId"))).append("_Positive_Rest() {\n");
 
-                    testClassBuilder.append(generateTestParameters(rqSpecs.getJSONArray("parameters"), objectData));
+                    if (rqSpecs.has("parameters")){
+                        testClassBuilder.append(generateTestParameters(rqSpecs.getJSONArray("parameters"), objectData));
+                    }
 
                     testClassBuilder.append("\n\t\tRestResponse response = ").append(serviceName).append("Rest.").append(uncapitalize(serviceName)).append("(environment).").append(rqSpecs.getString("operationId"))
                             .append("();\n");
@@ -79,7 +81,9 @@ public class TestFactory {
                 testClassBuilder.append("\n\t@Test()\n");
                 testClassBuilder.append("\tpublic void test").append(rqSpecs.getString("operationId")).append("_Negative_Rest() {\n");
 
-                testClassBuilder.append(generateTestParameters(rqSpecs.getJSONArray("parameters"), objectData));
+                if (rqSpecs.has("parameters")){
+                    testClassBuilder.append(generateTestParameters(rqSpecs.getJSONArray("parameters"), objectData));
+                }
 
                 testClassBuilder.append("\n\t\tRestResponse response = ").append(serviceName).append("Rest.").append(uncapitalize(serviceName)).append("(environment).").append(rqSpecs.getString("operationId"))
                         .append("();\n");
@@ -98,7 +102,7 @@ public class TestFactory {
         return testClasses;
     }
 
-    private String generateTestParameters(JSONArray parameters, Map<String, List<Pair<String, String>>> objectData){
+    private String generateTestParameters(JSONArray parameters, Map<String, List<Pair<String, String>>> objectData) {
         StringBuilder parameterBuilder = new StringBuilder();
         for (Object parameter : parameters){
             if (parameter instanceof JSONObject){

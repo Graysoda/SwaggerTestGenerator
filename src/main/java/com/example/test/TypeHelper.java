@@ -11,6 +11,21 @@ public class TypeHelper {
         return replace.substring(0,1).toLowerCase() + replace.substring(1);
     }
 
+    public static String makeCamelCase(String s){
+        StringBuilder newString = new StringBuilder();
+
+        if (s.contains("-")){
+            String[] split = s.split("-");
+            for (int i = 0; i < split.length; i++) {
+                newString.append((i > 0) ? capitalize(split[i]) : split[i]);
+            }
+        } else {
+            return s;
+        }
+
+        return newString.toString();
+    }
+
     public static String capitalize(String s) {
         return s.substring(0,1).toUpperCase() + s.substring(1);
     }
@@ -58,7 +73,7 @@ public class TypeHelper {
 
             // Array case
             if (jsonPropertyType.getString("type").equals("array")){
-                dataType = "ArrayList<" + extractDataType(jsonPropertyType.getJSONObject("items")) + ">";
+                dataType = "List<" + extractDataType(jsonPropertyType.getJSONObject("items")) + ">";
             }
 
             // Enum check
@@ -80,7 +95,7 @@ public class TypeHelper {
             // Object check
             // I'm assuming that all objects will be a container around a list of their "additionalProperties"
             // which can be represented as a Pair<String(Name), additionalPropertyType>
-            if (jsonPropertyType.getString("type").equals("object")){
+            if (jsonPropertyType.getString("type").equals("object") && jsonPropertyType.has("additionalProperties")){
                 dataType = "ArrayList<Pair<String, " + extractDataType(jsonPropertyType.getJSONObject("additionalProperties")) + ">";
             }
 
@@ -94,6 +109,11 @@ public class TypeHelper {
         if (jsonPropertyType.has("$ref") && !jsonPropertyType.has("type")){
             String[] ref = jsonPropertyType.getString("$ref").split("/");
             dataType = ref[ref.length-1];
+
+            if (dataType.contains("Iterable")){
+                // "«" "»" special chars for indicating the type of Iterable
+                dataType = "List<" + dataType.substring(dataType.indexOf("«") + 1, dataType.indexOf("»")) + ">";
+            }
         }
 
         return dataType;

@@ -28,7 +28,7 @@ public class CommonObjectsFactory {
 
             // extracts the enum values
             if (name.contains("Enum")){
-                stringBuilder.append("public enum ").append(name).append("{\n");
+                stringBuilder.append("public enum ").append(name).append(" {\n");
 
                 for (Pair<String, String> pair : fields){
                     stringBuilder.append(pair.getKey()).append("(\"").append(pair.getValue()).append("\"),\n");
@@ -52,8 +52,8 @@ public class CommonObjectsFactory {
                 // import statements
                 for (Pair<String, String> field : fields){
                     if (field.getValue().contains("<")){
-                        if (!stringBuilder.toString().contains("import java.util.ArrayList;")){
-                            stringBuilder.append("import java.util.ArrayList;\n");
+                        if (!stringBuilder.toString().contains("import java.util.List;")){
+                            stringBuilder.append("import java.util.List;\n");
                         }
                         if (isNotStandardType(getListType(field.getValue()))){
                             stringBuilder.append("import com.").append(company).append(".api.restServices.").append(serviceName).append(".commonObjects.").append(getListType(field.getValue())).append(";\n");
@@ -124,32 +124,37 @@ public class CommonObjectsFactory {
         Map<String, List<Pair<String, String >>> commonObjects = new HashMap<>();
 
         for (String name : definitions.keySet()) {
-            JSONObject jsonProperties = definitions.getJSONObject(name).getJSONObject("properties");
-            List<Pair<String, String>> fields = new ArrayList<>();
+            if (name.contains("Iterable")){
 
-            for (String propertyName : jsonProperties.keySet()) {
-                JSONObject jsonPropertyType = jsonProperties.getJSONObject(propertyName);
-                String type = extractDataType(jsonPropertyType);
+            } else {
+                JSONObject jsonProperties = definitions.getJSONObject(name).getJSONObject("properties");
+                List<Pair<String, String>> fields = new ArrayList<>();
 
-                // check if it's an enum value
-                if (type.contains("{")){
-                    String[] enumValues = type.substring(type.indexOf("{"), type.indexOf("}")+1)
-                            .replace("{","").replace("}","").split(",");
-                    String enumName = name + capitalize(propertyName) + "Enum";
-                    List<Pair<String, String>> enumFields = new ArrayList<>();
+                for (String propertyName : jsonProperties.keySet()) {
+                    JSONObject jsonPropertyType = jsonProperties.getJSONObject(propertyName);
+                    String type = extractDataType(jsonPropertyType);
 
-                    for (String value : enumValues){
-                        enumFields.add(new Pair<>(value.toUpperCase(), value));
+                    // check if it's an enum value
+                    if (type.contains("{")){
+                        String[] enumValues = type.substring(type.indexOf("{"), type.indexOf("}")+1)
+                                .replace("{","").replace("}","").split(",");
+                        String enumName = name + capitalize(propertyName) + "Enum";
+                        List<Pair<String, String>> enumFields = new ArrayList<>();
+
+                        for (String value : enumValues){
+                            enumFields.add(new Pair<>(value.toUpperCase().replace(" ", "_"), value));
+                        }
+
+                        commonObjects.put(enumName, enumFields);
+
+                        fields.add(new Pair<>(propertyName,enumName));
+                    } else {
+                        fields.add(new Pair<>(propertyName, type));
                     }
-
-                    commonObjects.put(enumName, enumFields);
-
-                    fields.add(new Pair<>(propertyName,enumName));
-                } else {
-                    fields.add(new Pair<>(propertyName, type));
                 }
+
+                commonObjects.put(name, fields);
             }
-            commonObjects.put(name, fields);
         }
         return commonObjects;
     }

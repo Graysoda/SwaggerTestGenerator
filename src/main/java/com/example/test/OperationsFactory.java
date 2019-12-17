@@ -66,50 +66,52 @@ public class OperationsFactory {
                 methodCode.append("\t\t\trestServices.addCustomHeader(header, headers.get(header));\n");
                 methodCode.append("\t\t}\n");
 
-                for (Object parameterSpec : endpointOpSpec.getJSONArray("parameters"))
-                {
-                    if (parameterSpec instanceof JSONObject)
+                if (endpointOpSpec.has("parameters")){
+                    for (Object parameterSpec : endpointOpSpec.getJSONArray("parameters"))
                     {
-                        String in = ((JSONObject) parameterSpec).getString("in");
-
-                        if (in.equals("body"))
+                        if (parameterSpec instanceof JSONObject)
                         {
-                            classBuilder.append(capitalize(opId)).append("Request request, ");
+                            String in = ((JSONObject) parameterSpec).getString("in");
 
-                            methodCode.append("\t\tString json = restService.getJsonFromObject(request);\n");
-                        }
-                        else if (in.equals("path") || in.equals("query"))
-                        {
-                            char delimiter = ';';
+                            if (in.equals("body"))
+                            {
+                                classBuilder.append(capitalize(opId)).append("Request request, ");
+
+                                methodCode.append("\t\tString json = restService.getJsonFromObject(request);\n");
+                            }
+                            else if (in.equals("path") || in.equals("query"))
+                            {
+                                char delimiter = ';';
 //                            if (((JSONObject) parameterSpec).has("style")){
 //                                // TODO handle the style (it changes the delimiting character)
 //                            }
-                            String type = ((JSONObject) parameterSpec).has("schema") ? extractDataType(((JSONObject) parameterSpec).getJSONObject("schema")) : extractDataType((JSONObject) parameterSpec);
+                                String type = ((JSONObject) parameterSpec).has("schema") ? extractDataType(((JSONObject) parameterSpec).getJSONObject("schema")) : extractDataType((JSONObject) parameterSpec);
 
-                            if (type.contains("{")){
-                                // removes any enum stuff since they'll need to be converted to strings anyway
-                                type = type.replace(type.substring(type.indexOf("{"), type.indexOf("}")+1), "");
-                            }
-
-                            classBuilder.append(type).append(" ").append(((JSONObject) parameterSpec).getString("name")).append(", ");
-
-                            if (type.contains("<"))
-                            {
-                                // gets the type of object the list contains
-                                String listType = type.substring(type.indexOf("<")+1, type.indexOf(">"));
-
-                                if (!methodCode.toString().contains("\t\tString path = \"\";\n")){
-                                    methodCode.append("\t\tString path = \"\";\n");
+                                if (type.contains("{")){
+                                    // removes any enum stuff since they'll need to be converted to strings anyway
+                                    type = type.replace(type.substring(type.indexOf("{"), type.indexOf("}")+1), "");
                                 }
 
-                                // for loop to make a string containing the values of the variables to be appended to the path
-                                methodCode.append("\t\tfor(").append(listType).append(" ").append(listType.toLowerCase()).append(" : ").append(((JSONObject) parameterSpec).getString("name")).append(") {\n");
-                                methodCode.append("\t\t\tpath = path + ").append(listType.toLowerCase()).append(" + \"").append(delimiter).append("\";\n");
-                                methodCode.append("\t\t}\n");
+                                classBuilder.append(type).append(" ").append(makeCamelCase(((JSONObject) parameterSpec).getString("name"))).append(", ");
+
+                                if (type.contains("<"))
+                                {
+                                    // gets the type of object the list contains
+                                    String listType = type.substring(type.indexOf("<")+1, type.indexOf(">"));
+
+                                    if (!methodCode.toString().contains("\t\tString path = \"\";\n")){
+                                        methodCode.append("\t\tString path = \"\";\n");
+                                    }
+
+                                    // for loop to make a string containing the values of the variables to be appended to the path
+                                    methodCode.append("\t\tfor(").append(listType).append(" ").append(listType.toLowerCase()).append(" : ").append(((JSONObject) parameterSpec).getString("name")).append(") {\n");
+                                    methodCode.append("\t\t\tpath = path + ").append(listType.toLowerCase()).append(" + \"").append(delimiter).append("\";\n");
+                                    methodCode.append("\t\t}\n");
+                                }
                             }
+                        } else {
+                            throw new RuntimeException("parameter not a JsonObject");
                         }
-                    } else {
-                        throw new RuntimeException("parameter not a JsonObject");
                     }
                 }
                 // remove last comma from parameters in method signature

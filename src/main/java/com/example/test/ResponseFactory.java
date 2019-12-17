@@ -10,7 +10,6 @@ import java.util.Map;
 import static com.example.test.TypeHelper.*;
 
 public class ResponseFactory {
-    private String company = "example";
     private ImportFactory importFactory;
 
     public ResponseFactory(){
@@ -18,7 +17,6 @@ public class ResponseFactory {
     }
 
     public ResponseFactory(String company){
-        this.company = company;
         importFactory = new ImportFactory(company);
     }
 

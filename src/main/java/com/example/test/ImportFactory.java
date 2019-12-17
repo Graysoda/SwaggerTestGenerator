@@ -18,14 +18,20 @@ public class ImportFactory {
         this.company = company;
     }
 
-    public String generateTestImportStatements(JSONObject rqSpecs, String serviceName, Map<String, List<Pair<String, String>>> objectData) {
+    public String generateTestImportStatements(JSONObject rqSpecs, String serviceName, Map<String, List<Pair<String, String>>> objectData) throws Exception {
+        String imports = "";
+
+        if (rqSpecs.has("parameters")){
+            imports = generateImportStatements(rqSpecs.getJSONArray("parameters"), serviceName, objectData);
+        }
+
         return "import org.testng.annotations.Test;\n" +
                 "import com." + company + ".api.restServices." + serviceName + "BaseTest;\n" +
-                generateImportStatements(rqSpecs.getJSONArray("parameters"), serviceName, objectData) +
+                 imports +
                 "\n";
     }
 
-    public String generateImportStatements(JSONArray parameters, String serviceName, Map<String, List<Pair<String, String>>> objectData){
+    public String generateImportStatements(JSONArray parameters, String serviceName, Map<String, List<Pair<String, String>>> objectData) throws Exception {
         StringBuilder stringBuilder = new StringBuilder();
         String commonObjectImport = "import com." + company + ".api.restService." + serviceName + ".commonObjects.";
 
@@ -78,9 +84,9 @@ public class ImportFactory {
                         type = type.replace(type.substring(type.indexOf("{"), type.indexOf("}")+1), "");
                     }
 
-                    if (((JSONObject) param).getString("type").equals("array") && !stringBuilder.toString().contains("import java.util.ArrayList;"))
+                    if (((JSONObject) param).getString("type").equals("array") && !stringBuilder.toString().contains("import java.util.List;"))
                     {
-                        stringBuilder.append("import java.util.ArrayList;\n");
+                        stringBuilder.append("import java.util.List;\n");
                     }
 
                     if (type.contains("<"))
@@ -103,7 +109,7 @@ public class ImportFactory {
         return stringBuilder.toString();
     }
 
-    public String generateResponseImportStatements(JSONObject responses, String serviceName, Map<String, List<Pair<String, String>>> objectData) {
+    public String generateResponseImportStatements(JSONObject responses, String serviceName, Map<String, List<Pair<String, String>>> objectData) throws Exception {
         String commonObjectImport = "import com." + company + ".api.restService." + serviceName + ".commonObjects.";
         StringBuilder stringBuilder = new StringBuilder();
 
@@ -118,9 +124,9 @@ public class ImportFactory {
 
                 if (type.contains("<")){
                     // if type contains "Pair" then the type is "object" and contains a list of "additional properties" of unknown type
-                    if (!stringBuilder.toString().contains("import java.util.ArrayList;"))
+                    if (!stringBuilder.toString().contains("import java.util.List;"))
                     {
-                        stringBuilder.append("import java.util.ArrayList;\n");
+                        stringBuilder.append("import java.util.List;\n");
                     }
 
                     if (type.contains("Pair"))
@@ -182,7 +188,7 @@ public class ImportFactory {
         return stringBuilder.toString();
     }
 
-    public String generateRequestImportStatements(JSONArray parameters, String serviceName, Map<String, List<Pair<String, String>>> objectData) {
+    public String generateRequestImportStatements(JSONArray parameters, String serviceName, Map<String, List<Pair<String, String>>> objectData) throws Exception {
         String commonObjectImport = "import com." + company + ".api.restService." + serviceName + ".commonObjects.";
         StringBuilder stringBuilder = new StringBuilder();
 
@@ -198,9 +204,9 @@ public class ImportFactory {
 
                     if (type.contains("<"))
                     {
-                        if (!stringBuilder.toString().contains("import java.util.ArrayList;"))
+                        if (!stringBuilder.toString().contains("import java.util.List;"))
                         {
-                            stringBuilder.append("import java.util.ArrayList;\n");
+                            stringBuilder.append("import java.util.List;\n");
                         }
 
                         if (type.contains("Pair"))
@@ -239,9 +245,9 @@ public class ImportFactory {
 
                     if (type.contains("<"))
                     {
-                        if (!stringBuilder.toString().contains("import java.util.ArrayList;"))
+                        if (!stringBuilder.toString().contains("import java.util.List;"))
                         {
-                            stringBuilder.append("import java.util.ArrayList;\n");
+                            stringBuilder.append("import java.util.List;\n");
                         }
 
                         String listType = getListType(type);

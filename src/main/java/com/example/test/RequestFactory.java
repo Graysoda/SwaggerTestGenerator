@@ -24,7 +24,7 @@ public class RequestFactory {
         importFactory = new ImportFactory(company);
     }
 
-    public ArrayList<String> generateRequestClasses(JSONObject paths, Map<String, List<Pair<String, String>>> objectData, String serviceName) {
+    public ArrayList<String> generateRequestClasses(JSONObject paths, Map<String, List<Pair<String, String>>> objectData, String serviceName) throws Exception {
         ArrayList<String> requestClasses = new ArrayList<>();
 
         for (String s : paths.keySet()){
@@ -35,7 +35,7 @@ public class RequestFactory {
                 StringBuilder classStructureStringBuilder = new StringBuilder();
                 StringBuilder fieldAccessors = new StringBuilder();
 
-                JSONArray parameters = rqSpecifications.getJSONArray("parameters");
+                JSONArray parameters = rqSpecifications.has("parameters") ? rqSpecifications.getJSONArray("parameters") : new JSONArray();
 
                 if (!parameters.toList().isEmpty()){
                     // import statements
@@ -48,7 +48,7 @@ public class RequestFactory {
                 //extracting parameters for endpoint operation from "parameters" object in swagger json
                 for (Object param : parameters){
                     if (param instanceof JSONObject){
-                        String name = ((JSONObject) param).getString("name");
+                        String name = makeCamelCase(((JSONObject) param).getString("name"));
                         classStructureStringBuilder.append("\t").append("private ");
 
                         String type = "";
@@ -65,6 +65,7 @@ public class RequestFactory {
                         classStructureStringBuilder.append(type).append(" ");
 
                         classStructureStringBuilder.append(name).append(";\n");
+
                         fieldAccessors.append(generateAccessors(type, name));
                     } else {
                         throw new JSONException("Invalid format in parameter array of " + s + " " + rqType);

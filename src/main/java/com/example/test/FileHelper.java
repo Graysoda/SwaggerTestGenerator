@@ -80,12 +80,10 @@ public class FileHelper {
 
     private static void writeArrayToFiles(ArrayList<String> classes, String path) {
         for (String s : classes){
-            System.out.println(s);
             String fileName;
 
-            if (s.contains("enum")){
-                String temp = s.split(" ")[2];
-                fileName = path + temp.substring(0, temp.indexOf("{")) + ".java";
+            if (s.split("\n")[0].contains(" enum ")){
+                fileName = path + s.split(" ")[2] + ".java";
             } else {
                 fileName = path + s.split("public class ")[1].split(" ")[0] + ".java";
             }
@@ -101,7 +99,6 @@ public class FileHelper {
                 }
             } catch (IOException e) {
                 e.printStackTrace();
-                System.out.println(fileName);
             }
         }
     }
