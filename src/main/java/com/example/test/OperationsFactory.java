@@ -124,11 +124,18 @@ public class OperationsFactory {
                 classBuilder.append(methodCode.toString());
 
                 // return line
-                classBuilder.append("\t\treturn restService.send").append(capitalize(rqType)).append("Request(resource")
-                        .append(" + \"")
-                        // logic for parsing the variable name out of the path
-                        .append(endpointPath.contains("{") ? endpointPath.replace("{", "\" + ").replace("}", "")
-                                : endpointPath + "\"");
+                classBuilder.append("\t\treturn restService.send").append(capitalize(rqType)).append("Request(resource");
+
+                // logic for parsing the variable name out of the path
+                if (endpointPath.contains("{")){
+                    if (endpointPath.indexOf("}") == endpointPath.length()-1){
+                        classBuilder.append(" + \"").append(endpointPath.replace("{", "\" + ").replace("}", ""));
+                    } else {
+                        classBuilder.append(" + \"").append(endpointPath.replace("{", "\" + ").replace("}", " + \"")).append("\"");
+                    }
+                } else {
+                    classBuilder.append(" + \"").append(endpointPath).append("\"");
+                }
 
                 if (methodCode.toString().contains("\t\tString path = \"\";\n") && methodCode.toString().contains("\t\tString json = restService.getJsonFromObject(request);\n")){
                     classBuilder.append(" + path, HeaderType.NONE, json);\n");

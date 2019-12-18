@@ -32,29 +32,24 @@ public class TestFactory {
             for (String rqType : endpointRqTypes.keySet()){
                 JSONObject rqSpecs = endpointRqTypes.getJSONObject(rqType);
                 StringBuilder testClassBuilder = new StringBuilder();
+                String operationId = capitalize(rqSpecs.getString("operationId"));
 
                 if (rqSpecs.getJSONObject("responses").keySet().contains("200")){
                     // import statements
                     testClassBuilder.append(importFactory.generateTestImportStatements(rqSpecs, serviceName, objectData));
 
                     // start of class declaration
-                    testClassBuilder.append("public class Test").append(rqSpecs.getString("operationId")).append("_Positive_Rest extends ").append(serviceName).append("BaseTest {\n");
-                    // annotations for setup method
-//                    testClassBuilder.append("\n\t@Override\n\t@BeforeMethod(alwaysRun = true)\n\t@Parameters(\"environment\")\n");
-//                    // basic setup method
-//                    testClassBuilder.append("\tpublic void setup(String environment) {\n");
-//                    testClassBuilder.append("\t\tsetEnvironment(environment);\n");
-//                    testClassBuilder.append("\t}\n");
+                    testClassBuilder.append("public class Test").append(operationId).append("_Positive_Rest extends ").append(serviceName).append("BaseTest {\n");
 
                     // basic test method
                     testClassBuilder.append("\n\t@Test()\n");
-                    testClassBuilder.append("\tpublic void test").append(capitalize(rqSpecs.getString("operationId"))).append("_Positive_Rest() {\n");
+                    testClassBuilder.append("\tpublic void test").append(operationId).append("_Positive_Rest() {\n");
 
                     if (rqSpecs.has("parameters")){
                         testClassBuilder.append(generateTestParameters(rqSpecs.getJSONArray("parameters"), objectData));
                     }
 
-                    testClassBuilder.append("\n\t\tRestResponse response = ").append(serviceName).append("Rest.").append(uncapitalize(serviceName)).append("(environment).").append(rqSpecs.getString("operationId"))
+                    testClassBuilder.append("\n\t\tRestResponse response = ").append(serviceName).append("Rest.").append(uncapitalize(serviceName)).append("(environment).").append(uncapitalize(operationId))
                             .append("();\n");
 
                     // end of test method
@@ -69,17 +64,11 @@ public class TestFactory {
                 }
                 testClassBuilder.append(importFactory.generateTestImportStatements(rqSpecs, serviceName, objectData));
                 // start of class declaration
-                testClassBuilder.append("public class Test").append(capitalize(rqSpecs.getString("operationId"))).append("_Negative_Rest extends ").append(serviceName).append("BaseTest {\n");
-                // annotations for setup method
-//                testClassBuilder.append("\n\t@Override\n\t@BeforeMethod(alwaysRun = true)\n\t@Parameters(\"environment\")\n");
-//                // basic setup method
-//                testClassBuilder.append("\tpublic void setup(String environment) {\n");
-//                testClassBuilder.append("\t\tsetEnvironment(environment);\n");
-//                testClassBuilder.append("\t}\n");
+                testClassBuilder.append("public class Test").append(operationId).append("_Negative_Rest extends ").append(serviceName).append("BaseTest {\n");
 
                 // basic test method
                 testClassBuilder.append("\n\t@Test()\n");
-                testClassBuilder.append("\tpublic void test").append(rqSpecs.getString("operationId")).append("_Negative_Rest() {\n");
+                testClassBuilder.append("\tpublic void test").append(operationId).append("_Negative_Rest() {\n");
 
                 if (rqSpecs.has("parameters")){
                     testClassBuilder.append(generateTestParameters(rqSpecs.getJSONArray("parameters"), objectData));
@@ -110,19 +99,18 @@ public class TestFactory {
                     String type = extractDataType(((JSONObject) parameter).getJSONObject("schema"));
                     List<Pair<String, String>> fields;
 
+                    // checks if the type is a List/Array
                     if (type.contains("<")){
                         fields = objectData.get(getListType(type));
-                    } else {
-                        fields = objectData.get(type);
-                    }
-
-                    if (type.contains("<")){
                         parameterBuilder.append("\t\t").append(type).append(" ").append(getListType(type).toLowerCase()).append("s = new ArrayList<>();\n");
                     } else {
-                        parameterBuilder.append("\t\t").append(type).append(" ").append(type.toLowerCase()).append(" = new ").append(type).append("();\n");
+                        fields = objectData.get(type);
+                        parameterBuilder.append("\t\t").append(type).append(" ").append(uncapitalize(type)).append(" = new ").append(type).append("();\n");
                     }
 
+                    // adds the objects needed for the test
                     for (Pair<String, String> field : fields){
+
                         if (field.getValue().contains("<")){
                             parameterBuilder.append("\t\t").append(field.getValue()).append(" ").append(field.getKey()).append(" = new ArrayList<>();\n");
                         } else {
@@ -138,6 +126,7 @@ public class TestFactory {
                         type = type.replace(type.substring(type.indexOf("{"), type.indexOf("}")+1), "");
                     }
 
+                    // checks if the type is a List/Array
                     if (type.contains("<")){
                         parameterBuilder.append("\t\t").append(type).append(" ").append(getListType(type).toLowerCase()).append("s = new ArrayList<>();\n");
                     } else {

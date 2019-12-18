@@ -3,10 +3,7 @@ package com.example.test;
 import javafx.util.Pair;
 import org.json.JSONObject;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static com.example.test.TypeHelper.*;
 
@@ -124,9 +121,7 @@ public class CommonObjectsFactory {
         Map<String, List<Pair<String, String >>> commonObjects = new HashMap<>();
 
         for (String name : definitions.keySet()) {
-            if (name.contains("Iterable")){
-
-            } else {
+            if (!name.contains("Iterable")){
                 JSONObject jsonProperties = definitions.getJSONObject(name).getJSONObject("properties");
                 List<Pair<String, String>> fields = new ArrayList<>();
 
@@ -153,11 +148,28 @@ public class CommonObjectsFactory {
                     }
                 }
 
-                commonObjects.put(name, fields);
+                if (definitions.getJSONObject(name).has("title")){
+                    commonObjects.put(definitions.getJSONObject(name).getString("title"), fields);
+                } else {
+                    commonObjects.put(name, fields);
+                }
             }
         }
         return commonObjects;
     }
 
+    private List<String> splitCamelCase(String s){
+        int i = 0;
+        StringBuilder stringBuilder = new StringBuilder(s.substring(0,1));
 
+        for (char c : s.substring(1).toCharArray()){
+            if (Character.isUpperCase(c)){
+                stringBuilder.append(",").append(c);
+            } else {
+                stringBuilder.append(c);
+            }
+        }
+
+        return Arrays.asList(stringBuilder.toString().split(","));
+    }
 }
