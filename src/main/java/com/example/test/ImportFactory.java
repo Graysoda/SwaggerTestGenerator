@@ -18,7 +18,7 @@ public class ImportFactory {
         this.company = company;
     }
 
-    public String generateTestImportStatements(JSONObject rqSpecs, String serviceName, Map<String, List<Pair<String, String>>> objectData) throws Exception {
+    public String generateTestImportStatements(JSONObject rqSpecs, String serviceName, Map<String, List<Pair<String, String>>> objectData) {
         String imports = "";
 
         if (rqSpecs.has("parameters")){
@@ -31,7 +31,7 @@ public class ImportFactory {
                 "\n";
     }
 
-    public String generateImportStatements(JSONArray parameters, String serviceName, Map<String, List<Pair<String, String>>> objectData) throws Exception {
+    public String generateImportStatements(JSONArray parameters, String serviceName, Map<String, List<Pair<String, String>>> objectData) {
         StringBuilder stringBuilder = new StringBuilder();
         String commonObjectImport = "import com." + company + ".api.restService." + serviceName + ".commonObjects.";
 
@@ -109,7 +109,7 @@ public class ImportFactory {
         return stringBuilder.toString();
     }
 
-    public String generateResponseImportStatements(JSONObject responses, String serviceName, Map<String, List<Pair<String, String>>> objectData) throws Exception {
+    public String generateResponseImportStatements(JSONObject responses, String serviceName) {
         String commonObjectImport = "import com." + company + ".api.restService." + serviceName + ".commonObjects.";
         StringBuilder stringBuilder = new StringBuilder();
 
@@ -188,7 +188,7 @@ public class ImportFactory {
         return stringBuilder.toString();
     }
 
-    public String generateRequestImportStatements(JSONArray parameters, String serviceName, Map<String, List<Pair<String, String>>> objectData) throws Exception {
+    public String generateRequestImportStatements(JSONArray parameters, String serviceName) {
         String commonObjectImport = "import com." + company + ".api.restService." + serviceName + ".commonObjects.";
         StringBuilder stringBuilder = new StringBuilder();
 
@@ -266,6 +266,29 @@ public class ImportFactory {
         }
 
         stringBuilder.append("\n");
+        return stringBuilder.toString();
+    }
+
+    public String generateInterfaceImportStatements(JSONObject paths, String serviceName) {
+        String commonObjectImport = "import com." + company + ".api.restService." + serviceName + ".commonObjects.";
+        StringBuilder stringBuilder = new StringBuilder("import com." + company + ".api.restServices.core.RestService;\n");
+
+        for (String path : paths.keySet()){
+            for (String rqType : paths.getJSONObject(path).keySet()){
+                JSONObject rqSpecs = paths.getJSONObject(path).getJSONObject(rqType);
+
+                if (rqSpecs.has("parameters")){
+                    for (Object o : rqSpecs.getJSONArray("parameters")){
+                        if (o instanceof JSONObject && ((JSONObject) o).has("schema") && !stringBuilder.toString().contains(rqSpecs.getString("operationId"))){
+                            stringBuilder.append(commonObjectImport).append(rqSpecs.getString("operationId")).append("Request;\n");
+                        }
+                    }
+                }
+            }
+        }
+
+        stringBuilder.append("\n");
+
         return stringBuilder.toString();
     }
 }

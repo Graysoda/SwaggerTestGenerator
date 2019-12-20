@@ -1,6 +1,7 @@
 package com.example.test;
 
 import javafx.util.Pair;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
@@ -25,14 +26,17 @@ public class Runner {
         Map<String, List<Pair<String, String>>> objectData = commonObjectsFactory.extractDefinitionData(root.getJSONObject("definitions"));
 
         JSONObject info = (JSONObject) root.get("info");
-
+        JSONArray tags = root.getJSONArray("tags");
         JSONObject paths = root.getJSONObject("paths");
+        String serviceName = info.getString("title");
 
-        ArrayList<String> operationClasses = operationsFactory.generateOperationClasses(info.getString("title"), root.getString("basePath"), root.getString("host"), paths);
-        ArrayList<String> testClasses = testFactory.generateTestClasses(paths,info.getString("title").replace(" ", ""), objectData);
-        ArrayList<String> commonObjects = commonObjectsFactory.generateCommonObjects(objectData, info.getString("title").replace(" ", ""));
-        ArrayList<String> requestClasses = requestFactory.generateRequestClasses(paths, objectData, info.getString("title").replace(" ", ""));
-        ArrayList<String> responseClasses = responseFactory.generateResponseClasses(paths, objectData, info.getString("title").replace(" ", ""));
+        ArrayList<String> operationClasses = operationsFactory.generateOperationClasses(serviceName, root.getString("basePath"), root.getString("host"), paths, tags);
+        ArrayList<String> testClasses = testFactory.generateTestClasses(paths,serviceName.replace(" ", ""), objectData);
+        ArrayList<String> commonObjects = commonObjectsFactory.generateCommonObjects(objectData, serviceName.replace(" ", ""));
+        ArrayList<String> requestClasses = requestFactory.generateRequestClasses(paths, objectData, serviceName.replace(" ", ""));
+        ArrayList<String> responseClasses = responseFactory.generateResponseClasses(paths, objectData, serviceName.replace(" ", ""));
+
+        //service.forEach((tag, opIds) -> System.out.println(tag + " = " + opIds.toString()));
 
 //        objectData.forEach( (variableName, fields) -> System.out.println(variableName + " = " + fields.toString()));
 //        System.out.println(commonObjects.toString());

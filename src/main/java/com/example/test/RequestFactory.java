@@ -39,7 +39,7 @@ public class RequestFactory {
 
                 if (!parameters.toList().isEmpty()){
                     // import statements
-                    classStructureStringBuilder.append(importFactory.generateRequestImportStatements(parameters, serviceName, objectData));
+                    classStructureStringBuilder.append(importFactory.generateRequestImportStatements(parameters, serviceName));
 
                     //first line of the class declaration
                     classStructureStringBuilder.append("public class ").append(capitalize(rqSpecifications.getString("operationId"))).append("Request {\n");

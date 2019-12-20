@@ -41,7 +41,7 @@ public class ResponseFactory {
                             StringBuilder fieldAccessors = new StringBuilder();
 
                             // import statements
-                            classStructureStringBuilder.append(importFactory.generateResponseImportStatements(responses, serviceName, objectData));
+                            classStructureStringBuilder.append(importFactory.generateResponseImportStatements(responses, serviceName));
 
                             //first line of the class declaration
                             classStructureStringBuilder.append("public class ").append(capitalize(rqSpecifications.getString("operationId"))).append("Response {\n");

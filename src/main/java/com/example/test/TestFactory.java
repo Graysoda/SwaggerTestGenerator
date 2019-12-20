@@ -24,6 +24,7 @@ public class TestFactory {
     }
 
     public ArrayList<String> generateTestClasses(JSONObject paths, String serviceName, Map<String, List<Pair<String, String>>> objectData) throws Exception {
+        ArrayList<Pair<String, String>> organizedTests = new ArrayList<>();
         ArrayList<String> testClasses = new ArrayList<>();
 
         for (String endpointPath : paths.keySet()){

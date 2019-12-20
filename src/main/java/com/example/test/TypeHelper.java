@@ -2,7 +2,25 @@ package com.example.test;
 
 import org.json.JSONObject;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 public class TypeHelper {
+    // list of reserved word in java
+    public static List<String> restrictedNames;
+
+    static {
+        restrictedNames = new ArrayList<>();
+        restrictedNames.addAll(Arrays.asList(
+                "abstract", "assert", "boolean", "break", "byte", "case", "catch", "char", "class", "const", "continue",
+                "default", "double", "do", "else", "enum", "extends", "false", "final", "finally", "float", "for",
+                "goto", "if", "implements", "import", "instanceof", "int", "interface", "long", "native", "new", "null",
+                "package", "private", "protected", "public", "return", "short", "static", "strictfp", "super", "switch",
+                "synchronized", "this", "throw", "throws", "transient", "true", "try", "void", "volatile", "while"
+        ));
+    }
+
     public static String getListType(String type) {
         return type.substring(type.indexOf("<") + 1, type.indexOf(">"));
     }

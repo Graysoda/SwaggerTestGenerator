@@ -96,6 +96,13 @@ public class FileHelper {
                     outputStream.write(s.getBytes());
                     outputStream.flush();
                     outputStream.close();
+                } else if (file.delete() && file.createNewFile()){
+                    BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(fileName));
+                    outputStream.write(s.getBytes());
+                    outputStream.flush();
+                    outputStream.close();
+                } else {
+                    System.out.println("cancer cancer cancer");
                 }
             } catch (IOException e) {
                 e.printStackTrace();
