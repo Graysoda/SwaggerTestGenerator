@@ -59,10 +59,12 @@ public class OperationsFactory {
         classBuilder.append("\t\tthis.resource = resource + this.resource;\n");
         classBuilder.append("\t}\n");
 
-        for (String endpointPath : paths.keySet()){
+        for (String endpointPath : paths.keySet())
+        {
             JSONObject endpointRqType = paths.getJSONObject(endpointPath);
 
-            for (String rqType : endpointRqType.keySet()){
+            for (String rqType : endpointRqType.keySet())
+            {
                 JSONObject endpointOpSpec = endpointRqType.getJSONObject(rqType);
                 String opId = endpointOpSpec.getString("operationId");
                 StringBuilder methodCode = new StringBuilder();
@@ -75,7 +77,8 @@ public class OperationsFactory {
                 methodCode.append("\t\t\trestServices.addCustomHeader(header, headers.get(header));\n");
                 methodCode.append("\t\t}\n");
 
-                if (endpointOpSpec.has("parameters")){
+                if (endpointOpSpec.has("parameters"))
+                {
                     for (Object parameterSpec : endpointOpSpec.getJSONArray("parameters"))
                     {
                         if (parameterSpec instanceof JSONObject)
@@ -96,7 +99,8 @@ public class OperationsFactory {
 //                            }
                                 String type = ((JSONObject) parameterSpec).has("schema") ? extractDataType(((JSONObject) parameterSpec).getJSONObject("schema")) : extractDataType((JSONObject) parameterSpec);
 
-                                if (type.contains("{")){
+                                if (type.contains("{"))
+                                {
                                     // removes any enum stuff since they'll need to be converted to strings anyway
                                     type = type.replace(type.substring(type.indexOf("{"), type.indexOf("}")+1), "");
                                 }
@@ -108,7 +112,8 @@ public class OperationsFactory {
                                     // gets the type of object the list contains
                                     String listType = type.substring(type.indexOf("<")+1, type.indexOf(">"));
 
-                                    if (!methodCode.toString().contains("\t\tString path = \"\";\n")){
+                                    if (!methodCode.toString().contains("\t\tString path = \"\";\n"))
+                                    {
                                         methodCode.append("\t\tString path = \"\";\n");
                                     }
 
@@ -118,7 +123,9 @@ public class OperationsFactory {
                                     methodCode.append("\t\t}\n");
                                 }
                             }
-                        } else {
+                        }
+                        else
+                        {
                             throw new RuntimeException("parameter not a JsonObject");
                         }
                     }
@@ -138,26 +145,38 @@ public class OperationsFactory {
                 String endpointWithoutCommonPart = endpointPath.replace(commonPath, "");
 
                 // logic for parsing the variable name out of the path
-                if (endpointWithoutCommonPart.contains("{")){
-                    if (endpointWithoutCommonPart.indexOf("}") == endpointWithoutCommonPart.length()-1){
+                if (endpointWithoutCommonPart.contains("{"))
+                {
+                    if (endpointWithoutCommonPart.indexOf("}") == endpointWithoutCommonPart.length()-1)
+                    {
                         classBuilder.append(" + \"").append(endpointWithoutCommonPart.replace("{", "\" + ").replace("}", ""));
-                    } else {
+                    }
+                    else
+                    {
                         classBuilder.append(" + \"").append(endpointWithoutCommonPart.replace("{", "\" + ").replace("}", " + \"")).append("\"");
                     }
-                } else {
+                }
+                else
+                {
                     classBuilder.append(" + \"").append(endpointWithoutCommonPart.replace(commonPath, "")).append("\"");
                 }
 
                 // logic for query variables
-                if (endpointOpSpec.has("parameters")){
+                if (endpointOpSpec.has("parameters"))
+                {
                     boolean firstQueryParam = true;
-                    for (Object paramSpec : endpointOpSpec.getJSONArray("parameters")){
-                        if (paramSpec instanceof JSONObject && ((JSONObject) paramSpec).getString("in").equals("query")){
+                    for (Object paramSpec : endpointOpSpec.getJSONArray("parameters"))
+                    {
+                        if (paramSpec instanceof JSONObject && ((JSONObject) paramSpec).getString("in").equals("query"))
+                        {
                             String name = makeCamelCase(((JSONObject) paramSpec).getString("name"));
-                            if (firstQueryParam){
+                            if (firstQueryParam)
+                            {
                                 classBuilder.insert(classBuilder.lastIndexOf("\""),"?" + name + "=\" + " + name + " + ").deleteCharAt(classBuilder.lastIndexOf("\""));
                                 firstQueryParam = false;
-                            } else {
+                            }
+                            else
+                            {
                                 classBuilder.append("\"&").append(name).append("=\" + ").append(name).append(" + ");
                             }
                         }
@@ -165,13 +184,20 @@ public class OperationsFactory {
                 }
 
                 // logic for how the return line should end
-                if (methodCode.toString().contains("\t\tString path = \"\";\n") && methodCode.toString().contains("\t\tString json = restService.getJsonFromObject(request);\n")){
+                if (methodCode.toString().contains("\t\tString path = \"\";\n") && methodCode.toString().contains("\t\tString json = restService.getJsonFromObject(request);\n"))
+                {
                     classBuilder.append(" + path, HeaderType.NONE, json);\n");
-                } else if (methodCode.toString().contains("\t\tString json = restService.getJsonFromObject(request);\n")) {
+                }
+                else if (methodCode.toString().contains("\t\tString json = restService.getJsonFromObject(request);\n"))
+                {
                     classBuilder.append(", HeaderType.NONE, json);\n");
-                } else if (methodCode.toString().contains("\t\tString path = \"\";\n")){
+                }
+                else if (methodCode.toString().contains("\t\tString path = \"\";\n"))
+                {
                     classBuilder.append(" + path, HeaderType.NONE, null);\n");
-                } else {
+                }
+                else
+                {
                     classBuilder.append(", HeaderType.NONE, null);\n");
                 }
 
@@ -239,35 +265,47 @@ public class OperationsFactory {
         Map<String, List<Pair<String, String>>> tagsWithOpIdsAndEndpointPaths = new HashMap<>();
 
         // initializing the map of tags to paths
-        for (Object o : tags){
-            if (o instanceof JSONObject){
+        for (Object o : tags)
+        {
+            if (o instanceof JSONObject)
+            {
                  tagsWithOpIdsAndEndpointPaths.put(((JSONObject) o).getString("name"), new ArrayList<>());
             }
         }
 
         // associating operatingId's with tags
-        for (String pathName : paths.keySet()){
+        for (String pathName : paths.keySet())
+        {
             JSONObject pathSpec = paths.getJSONObject(pathName);
             String tagName = null;
 
             for (String rqType : pathSpec.keySet()){
                 JSONObject rqSpec = pathSpec.getJSONObject(rqType);
 
-                if (rqSpec.has("tags")){
-                    if (tagName == null){
+                if (rqSpec.has("tags"))
+                {
+                    if (tagName == null)
+                    {
                         tagName = rqSpec.getJSONArray("tags").getString(0);
-                    } else if (!tagName.equals(rqSpec.getJSONArray("tags").getString(0))){
+                    }
+                    else if (!tagName.equals(rqSpec.getJSONArray("tags").getString(0)))
+                    {
                         System.out.println(pathName + "has different tags");
                     }
 
-                    if (rqSpec.getJSONArray("tags").toList().size() == 1){
+                    if (rqSpec.getJSONArray("tags").toList().size() == 1)
+                    {
                         tagsWithOpIdsAndEndpointPaths
                                 .get(rqSpec.getJSONArray("tags").getString(0))
                                 .add(new Pair<>(rqSpec.getString("operationId"), pathName));
-                    } else {
+                    }
+                    else
+                    {
                         System.out.println(pathName + "[" + rqType + "] has more than 1 tag");
                     }
-                } else {
+                }
+                else
+                {
                     System.out.println(pathName + "[" + rqType + "] has no tags");
                 }
             }
@@ -276,16 +314,23 @@ public class OperationsFactory {
         // extracting the shared part of the path for each tag
         Map<String, String> tagsSharedPath = new HashMap<>();
 
-        for (String tag : tagsWithOpIdsAndEndpointPaths.keySet()){
+        for (String tag : tagsWithOpIdsAndEndpointPaths.keySet())
+        {
             String sharedPath = "";
-            for (Pair<String, String> pair : tagsWithOpIdsAndEndpointPaths.get(tag)){
-                if (sharedPath.isEmpty()){
+            for (Pair<String, String> pair : tagsWithOpIdsAndEndpointPaths.get(tag))
+            {
+                if (sharedPath.isEmpty())
+                {
                     sharedPath = pair.getValue();
-                } else {
-                    for (String s : sharedPath.split("/")){
+                }
+                else
+                {
+                    for (String s : sharedPath.split("/"))
+                    {
                         if (!s.isEmpty()
                                 && !Arrays.asList(pair.getValue().split("/")).contains(s)
-                                && !Arrays.asList(pair.getValue().split("/")).contains(s + "s")){
+                                && !Arrays.asList(pair.getValue().split("/")).contains(s + "s"))
+                        {
                             sharedPath = sharedPath.replace(("/" + s), "");
                         }
                     }
@@ -297,25 +342,32 @@ public class OperationsFactory {
         // removing matching parts of the tag names
         Map<String, String> tagOldAndNewNamePairs = new HashMap<>();
 
-        for (String tag : tagsWithOpIdsAndEndpointPaths.keySet()){
+        for (String tag : tagsWithOpIdsAndEndpointPaths.keySet())
+        {
             ArrayList<String> comparators = new ArrayList<>(tagsWithOpIdsAndEndpointPaths.keySet());
             comparators.remove(tag);
 
-            for (String compare : comparators){
-                if (compare.contains("-") && tag.contains("-")){
+            for (String compare : comparators)
+            {
+                if (compare.contains("-") && tag.contains("-"))
+                {
                     String nameDifferences = tag;
 
-                    for (String t : tag.split("-")){
-                        if (Arrays.asList(compare.split("-")).contains(t)){
+                    for (String t : tag.split("-"))
+                    {
+                        if (Arrays.asList(compare.split("-")).contains(t))
+                        {
                             nameDifferences = nameDifferences.replace("-" + t, "");
 
-                            if (restrictedNames.contains(nameDifferences)){
+                            if (restrictedNames.contains(nameDifferences))
+                            {
                                 nameDifferences = nameDifferences + "-" + t;
                             }
                         }
                     }
 
-                    if (!tagOldAndNewNamePairs.containsKey(tag)){
+                    if (!tagOldAndNewNamePairs.containsKey(tag))
+                    {
                         tagOldAndNewNamePairs.put(tag, nameDifferences);
                     }
                 }
@@ -323,14 +375,18 @@ public class OperationsFactory {
         }
 
         // makes the "sub service" classes (small subsections of server endpoints described in the swagger)
-        for (String originalTag : tagsWithOpIdsAndEndpointPaths.keySet()){
+        for (String originalTag : tagsWithOpIdsAndEndpointPaths.keySet())
+        {
             JSONObject pathSubsetByTag = new JSONObject();
 
             // populate the above JSONObject
-            for (String path : paths.keySet()){
-                for (String rqType : paths.getJSONObject(path).keySet()){
+            for (String path : paths.keySet())
+            {
+                for (String rqType : paths.getJSONObject(path).keySet())
+                {
                     String tag = (String) paths.getJSONObject(path).getJSONObject(rqType).getJSONArray("tags").toList().get(0);
-                    if (tag.equals(originalTag)){
+                    if (tag.equals(originalTag))
+                    {
                         pathSubsetByTag.put(path, new JSONObject(paths.get(path).toString()));
                     }
                 }

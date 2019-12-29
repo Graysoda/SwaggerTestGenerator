@@ -21,7 +21,8 @@ public class ImportFactory {
     public String generateTestImportStatements(JSONObject rqSpecs, String serviceName, Map<String, List<Pair<String, String>>> objectData) {
         String imports = "";
 
-        if (rqSpecs.has("parameters")){
+        if (rqSpecs.has("parameters"))
+        {
             imports = generateImportStatements(rqSpecs.getJSONArray("parameters"), serviceName, objectData);
         }
 

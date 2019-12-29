@@ -22,23 +22,27 @@ public class FileHelper {
         return new JSONObject(sb.toString());
     }
 
-    public static void writeToFiles(ArrayList<String> operationClasses, ArrayList<String> testClasses, ArrayList<String> commonObjects, ArrayList<String> requestClasses, ArrayList<String> responseClasses) throws IOException {
+    public static void writeToFiles(ArrayList<String> operationClasses, ArrayList<String> testClasses,
+                                    ArrayList<String> commonObjects, ArrayList<String> requestClasses,
+                                    ArrayList<String> responseClasses) throws IOException {
         String path = System.getProperty("user.home") + File.separator + "Desktop" + File.separator + "testOutput" + File.separator;
 
         File file = new File(path);
 
-        if (file.mkdir() || file.exists()){
+        if (file.mkdir() || file.exists())
+        {
             String operationPath = path + "operationClasses" + File.separator;
             file = new File(operationPath);
 
-            if (file.mkdir() || file.exists()){
-
+            if (file.mkdir() || file.exists())
+            {
                 String propertyFile = operationClasses.get(0);
                 operationClasses.remove(0);
 
                 file = new File(operationPath + propertyFile.substring(propertyFile.indexOf("_") + 1, propertyFile.indexOf(".")) + ".properties");
 
-                if (file.createNewFile()){
+                if (file.createNewFile())
+                {
                     BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(file.getAbsoluteFile()));
                     outputStream.write(propertyFile.getBytes());
                     outputStream.flush();
@@ -51,28 +55,32 @@ public class FileHelper {
             String testClassesPath = path + "testClasses" + File.separator;
             file = new File(testClassesPath);
 
-            if (file.mkdir() || file.exists()){
+            if (file.mkdir() || file.exists())
+            {
                 writeArrayToFiles(testClasses, testClassesPath);
             }
 
             String commonObjectsPath = path + "commonObjects" + File.separator;
             file = new File(commonObjectsPath);
 
-            if (file.mkdir() || file.exists()){
+            if (file.mkdir() || file.exists())
+            {
                 writeArrayToFiles(commonObjects, commonObjectsPath);
             }
 
             String requestClassPath = path + "requestClasses" + File.separator;
             file = new File(requestClassPath);
 
-            if (file.mkdir() || file.exists()){
+            if (file.mkdir() || file.exists())
+            {
                 writeArrayToFiles(requestClasses, requestClassPath);
             }
 
             String responseClassPath = path + "responseClasses" + File.separator;
             file = new File(responseClassPath);
 
-            if (file.mkdir() || file.exists()){
+            if (file.mkdir() || file.exists())
+            {
                 writeArrayToFiles(responseClasses, responseClassPath);
             }
         }
@@ -101,8 +109,6 @@ public class FileHelper {
                     outputStream.write(s.getBytes());
                     outputStream.flush();
                     outputStream.close();
-                } else {
-                    System.out.println("cancer cancer cancer");
                 }
             } catch (IOException e) {
                 e.printStackTrace();

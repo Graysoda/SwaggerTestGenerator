@@ -19,15 +19,18 @@ public class CommonObjectsFactory {
     public ArrayList<String> generateCommonObjects(Map<String, List<Pair<String, String>>> objectData, String serviceName){
         ArrayList<String> commonObjectsInStringForm = new ArrayList<>();
 
-        for (String name : objectData.keySet()){
+        for (String name : objectData.keySet())
+        {
             List<Pair<String, String>> fields = objectData.get(name);
             StringBuilder stringBuilder = new StringBuilder();
 
             // extracts the enum values
-            if (name.contains("Enum")){
+            if (name.contains("Enum"))
+            {
                 stringBuilder.append("public enum ").append(name).append(" {\n");
 
-                for (Pair<String, String> pair : fields){
+                for (Pair<String, String> pair : fields)
+                {
                     stringBuilder.append(pair.getKey()).append("(\"").append(pair.getValue()).append("\"),\n");
                 }
 
@@ -45,17 +48,25 @@ public class CommonObjectsFactory {
                         .append("(String s){\n")
                         .append("\t\tthis.s = s;\n\t}\n}\n\n");
 
-            } else {
+            }
+            else
+            {
                 // import statements
-                for (Pair<String, String> field : fields){
-                    if (field.getValue().contains("<")){
-                        if (!stringBuilder.toString().contains("import java.util.List;")){
+                for (Pair<String, String> field : fields)
+                {
+                    if (field.getValue().contains("<"))
+                    {
+                        if (!stringBuilder.toString().contains("import java.util.List;"))
+                        {
                             stringBuilder.append("import java.util.List;\n");
                         }
-                        if (isNotStandardType(getListType(field.getValue()))){
+                        if (isNotStandardType(getListType(field.getValue())))
+                        {
                             stringBuilder.append("import com.").append(company).append(".api.restServices.").append(serviceName).append(".commonObjects.").append(getListType(field.getValue())).append(";\n");
                         }
-                    } else if (isNotStandardType(field.getValue())){
+                    }
+                    else if (isNotStandardType(field.getValue()))
+                    {
                         stringBuilder.append("import com.").append(company).append(".api.restServices.").append(serviceName).append(".commonObjects.").append(field.getValue()).append(";\n");
                     }
                 }
@@ -64,7 +75,8 @@ public class CommonObjectsFactory {
                 stringBuilder.append("public class ").append(name).append(" {\n");
 
                 // declaring global variables
-                for (Pair<String, String> pair : fields){
+                for (Pair<String, String> pair : fields)
+                {
                     stringBuilder.append("\tprivate ").append(pair.getValue()).append(" ").append(pair.getKey()).append(";\n");
                 }
 
@@ -75,7 +87,8 @@ public class CommonObjectsFactory {
                 stringBuilder.append("\t").append(name).append("(");
 
                 // declaring the fields in the constructor method signature
-                for (Pair<String, String> field : fields) {
+                for (Pair<String, String> field : fields)
+                {
                     stringBuilder.append(field.getValue())
                             .append(" ")
                             .append(field.getKey())
@@ -86,7 +99,8 @@ public class CommonObjectsFactory {
                         .append("){\n");
 
                 // setting the classes globals to the constructor values
-                for (Pair<String, String> pair : fields){
+                for (Pair<String, String> pair : fields)
+                {
                     stringBuilder.append("\t\tthis.").append(pair.getKey()).append(" = ").append(pair.getKey()).append(";\n");
                 }
 
@@ -94,7 +108,8 @@ public class CommonObjectsFactory {
                 stringBuilder.append("\t}\n\n");
 
                 // make getters
-                for (Pair<String, String> pair : fields){
+                for (Pair<String, String> pair : fields)
+                {
                     String varName = capitalize(pair.getKey());
                     stringBuilder.append("\tpublic ").append(pair.getValue()) // return type
                             .append(" get").append(varName).append("(){\n") // name of getter
@@ -102,7 +117,8 @@ public class CommonObjectsFactory {
                 }
 
                 // make setters
-                for (Pair<String, String> pair : fields){
+                for (Pair<String, String> pair : fields)
+                {
                     String varName = capitalize(pair.getKey());
                     stringBuilder.append("\tpublic void set").append(varName) // name of setter
                             .append("(").append(pair.getValue()).append(" ").append(pair.getKey()).append("){\n") // method parameter
@@ -120,37 +136,47 @@ public class CommonObjectsFactory {
     public Map<String, List<Pair<String, String>>> extractDefinitionData(JSONObject definitions) {
         Map<String, List<Pair<String, String >>> commonObjects = new HashMap<>();
 
-        for (String name : definitions.keySet()) {
-            if (!name.contains("Iterable")){
+        for (String name : definitions.keySet())
+        {
+            if (!name.contains("Iterable"))
+            {
                 JSONObject jsonProperties = definitions.getJSONObject(name).getJSONObject("properties");
                 List<Pair<String, String>> fields = new ArrayList<>();
 
-                for (String propertyName : jsonProperties.keySet()) {
+                for (String propertyName : jsonProperties.keySet())
+                {
                     JSONObject jsonPropertyType = jsonProperties.getJSONObject(propertyName);
                     String type = extractDataType(jsonPropertyType);
 
                     // check if it's an enum value
-                    if (type.contains("{")){
+                    if (type.contains("{"))
+                    {
                         String[] enumValues = type.substring(type.indexOf("{"), type.indexOf("}")+1)
                                 .replace("{","").replace("}","").split(",");
                         String enumName = name + capitalize(propertyName) + "Enum";
                         List<Pair<String, String>> enumFields = new ArrayList<>();
 
-                        for (String value : enumValues){
+                        for (String value : enumValues)
+                        {
                             enumFields.add(new Pair<>(value.toUpperCase().replace(" ", "_"), value));
                         }
 
                         commonObjects.put(enumName, enumFields);
 
                         fields.add(new Pair<>(propertyName,enumName));
-                    } else {
+                    }
+                    else
+                    {
                         fields.add(new Pair<>(propertyName, type));
                     }
                 }
 
-                if (definitions.getJSONObject(name).has("title")){
+                if (definitions.getJSONObject(name).has("title"))
+                {
                     commonObjects.put(definitions.getJSONObject(name).getString("title"), fields);
-                } else {
+                }
+                else
+                {
                     commonObjects.put(name, fields);
                 }
             }
@@ -162,10 +188,14 @@ public class CommonObjectsFactory {
         int i = 0;
         StringBuilder stringBuilder = new StringBuilder(s.substring(0,1));
 
-        for (char c : s.substring(1).toCharArray()){
-            if (Character.isUpperCase(c)){
+        for (char c : s.substring(1).toCharArray())
+        {
+            if (Character.isUpperCase(c))
+            {
                 stringBuilder.append(",").append(c);
-            } else {
+            }
+            else
+            {
                 stringBuilder.append(c);
             }
         }

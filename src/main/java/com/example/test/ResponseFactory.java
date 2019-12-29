@@ -23,19 +23,24 @@ public class ResponseFactory {
     public ArrayList<String> generateResponseClasses(JSONObject paths, Map<String, List<Pair<String, String>>> objectData, String serviceName) throws Exception {
         ArrayList<String> responseClasses = new ArrayList<>();
 
-        for (String s : paths.keySet()){
+        for (String s : paths.keySet())
+        {
             JSONObject endpointRQType = paths.getJSONObject(s);
 
-            for (String rqType : endpointRQType.keySet()){
+            for (String rqType : endpointRQType.keySet())
+            {
                 JSONObject rqSpecifications = endpointRQType.getJSONObject(rqType);
 
-                if (rqSpecifications.has("responses")){
+                if (rqSpecifications.has("responses"))
+                {
                     JSONObject responses = rqSpecifications.getJSONObject("responses");
 
-                    for (String httpResponseCode : responses.keySet()){
+                    for (String httpResponseCode : responses.keySet())
+                    {
                         JSONObject response = responses.getJSONObject(httpResponseCode);
 
-                        if (response.has("schema")){
+                        if (response.has("schema"))
+                        {
                             String type = extractDataType(response.getJSONObject("schema"));
                             StringBuilder classStructureStringBuilder = new StringBuilder();
                             StringBuilder fieldAccessors = new StringBuilder();
@@ -48,11 +53,14 @@ public class ResponseFactory {
 
                             classStructureStringBuilder.append("\t").append("private ").append(type).append(" ");
 
-                            if (type.contains("<")){
+                            if (type.contains("<"))
+                            {
                                 String name = type.replace("<", "").replace(">", "").replace(", ", "");
                                 classStructureStringBuilder.append(name).append(";\n");
                                 fieldAccessors.append(generateAccessors(type, name));
-                            } else {
+                            }
+                            else
+                            {
                                 classStructureStringBuilder.append(type.toLowerCase()).append(";\n");
                                 fieldAccessors.append(generateAccessors(type, type.toLowerCase()));
                             }
@@ -63,7 +71,9 @@ public class ResponseFactory {
                         }
                     }
 
-                } else {
+                }
+                else
+                {
                     throw new Exception("No response defined for " + s + " " + rqType);
                 }
             }

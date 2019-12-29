@@ -27,15 +27,18 @@ public class TestFactory {
         ArrayList<Pair<String, String>> organizedTests = new ArrayList<>();
         ArrayList<String> testClasses = new ArrayList<>();
 
-        for (String endpointPath : paths.keySet()){
+        for (String endpointPath : paths.keySet())
+        {
             JSONObject endpointRqTypes = paths.getJSONObject(endpointPath);
 
-            for (String rqType : endpointRqTypes.keySet()){
+            for (String rqType : endpointRqTypes.keySet())
+            {
                 JSONObject rqSpecs = endpointRqTypes.getJSONObject(rqType);
                 StringBuilder testClassBuilder = new StringBuilder();
                 String operationId = capitalize(rqSpecs.getString("operationId"));
 
-                if (rqSpecs.getJSONObject("responses").keySet().contains("200")){
+                if (rqSpecs.getJSONObject("responses").keySet().contains("200"))
+                {
                     // import statements
                     testClassBuilder.append(importFactory.generateTestImportStatements(rqSpecs, serviceName, objectData));
 
@@ -46,7 +49,8 @@ public class TestFactory {
                     testClassBuilder.append("\n\t@Test()\n");
                     testClassBuilder.append("\tpublic void test").append(operationId).append("_Positive_Rest() {\n");
 
-                    if (rqSpecs.has("parameters")){
+                    if (rqSpecs.has("parameters"))
+                    {
                         testClassBuilder.append(generateTestParameters(rqSpecs.getJSONArray("parameters"), objectData));
                     }
 
@@ -71,7 +75,8 @@ public class TestFactory {
                 testClassBuilder.append("\n\t@Test()\n");
                 testClassBuilder.append("\tpublic void test").append(operationId).append("_Negative_Rest() {\n");
 
-                if (rqSpecs.has("parameters")){
+                if (rqSpecs.has("parameters"))
+                {
                     testClassBuilder.append(generateTestParameters(rqSpecs.getJSONArray("parameters"), objectData));
                 }
 
@@ -94,43 +99,58 @@ public class TestFactory {
 
     private String generateTestParameters(JSONArray parameters, Map<String, List<Pair<String, String>>> objectData) {
         StringBuilder parameterBuilder = new StringBuilder();
-        for (Object parameter : parameters){
-            if (parameter instanceof JSONObject){
-                if (((JSONObject) parameter).has("schema")){
+        for (Object parameter : parameters)
+        {
+            if (parameter instanceof JSONObject)
+            {
+                if (((JSONObject) parameter).has("schema"))
+                {
                     String type = extractDataType(((JSONObject) parameter).getJSONObject("schema"));
                     List<Pair<String, String>> fields;
 
                     // checks if the type is a List/Array
-                    if (type.contains("<")){
+                    if (type.contains("<"))
+                    {
                         fields = objectData.get(getListType(type));
                         parameterBuilder.append("\t\t").append(type).append(" ").append(getListType(type).toLowerCase()).append("s = new ArrayList<>();\n");
-                    } else {
+                    }
+                    else
+                    {
                         fields = objectData.get(type);
                         parameterBuilder.append("\t\t").append(type).append(" ").append(uncapitalize(type)).append(" = new ").append(type).append("();\n");
                     }
 
                     // adds the objects needed for the test
-                    for (Pair<String, String> field : fields){
-
-                        if (field.getValue().contains("<")){
+                    for (Pair<String, String> field : fields)
+                    {
+                        if (field.getValue().contains("<"))
+                        {
                             parameterBuilder.append("\t\t").append(field.getValue()).append(" ").append(field.getKey()).append(" = new ArrayList<>();\n");
-                        } else {
+                        }
+                        else
+                        {
                             parameterBuilder.append("\t\t").append(field.getValue()).append(" ").append(field.getKey()).append(";\n");
                         }
                     }
 
-                } else {
+                }
+                else
+                {
                     String type = extractDataType((JSONObject) parameter);
 
-                    if (type.contains("{")){
+                    if (type.contains("{"))
+                    {
                         // removes any enum stuff since they'll need to be converted to strings anyway
                         type = type.replace(type.substring(type.indexOf("{"), type.indexOf("}")+1), "");
                     }
 
                     // checks if the type is a List/Array
-                    if (type.contains("<")){
+                    if (type.contains("<"))
+                    {
                         parameterBuilder.append("\t\t").append(type).append(" ").append(getListType(type).toLowerCase()).append("s = new ArrayList<>();\n");
-                    } else {
+                    }
+                    else
+                    {
                         parameterBuilder.append("\t\t").append(type).append(" ").append(((JSONObject) parameter).getString("name")).append(";\n");
                     }
                 }
