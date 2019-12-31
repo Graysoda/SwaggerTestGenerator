@@ -81,10 +81,10 @@ public class CommonObjectsFactory {
                 }
 
                 // empty constructor
-                stringBuilder.append("\t").append(name).append("(){}").append("\n\n");
+                stringBuilder.append("\tpublic ").append(name).append("(){}").append("\n\n");
 
                 // constructor with all fields
-                stringBuilder.append("\t").append(name).append("(");
+                stringBuilder.append("\tpublic ").append(name).append("(");
 
                 // declaring the fields in the constructor method signature
                 for (Pair<String, String> field : fields)
@@ -181,6 +181,9 @@ public class CommonObjectsFactory {
                 }
             }
         }
+
+        restrictedNames.addAll(commonObjects.keySet());
+
         return commonObjects;
     }
 

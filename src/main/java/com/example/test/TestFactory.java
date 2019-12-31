@@ -5,6 +5,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -23,9 +24,8 @@ public class TestFactory {
         importFactory = new ImportFactory(company);
     }
 
-    public ArrayList<String> generateTestClasses(JSONObject paths, String serviceName, Map<String, List<Pair<String, String>>> objectData) throws Exception {
-        ArrayList<Pair<String, String>> organizedTests = new ArrayList<>();
-        ArrayList<String> testClasses = new ArrayList<>();
+    public Map<String, List<String>> generateTestClasses(JSONObject paths, String serviceName, Map<String, List<Pair<String, String>>> objectData, Map<String, String> mapTagNameToNewName) {
+        Map<String, List<String>> organizedTests = new HashMap<>();
 
         for (String endpointPath : paths.keySet())
         {
@@ -36,6 +36,11 @@ public class TestFactory {
                 JSONObject rqSpecs = endpointRqTypes.getJSONObject(rqType);
                 StringBuilder testClassBuilder = new StringBuilder();
                 String operationId = capitalize(rqSpecs.getString("operationId"));
+                String organizingTag = mapTagNameToNewName.get(rqSpecs.getJSONArray("tags").getString(0));
+
+                if (!organizedTests.containsKey(organizingTag)){
+                    organizedTests.put(organizingTag, new ArrayList<>());
+                }
 
                 if (rqSpecs.getJSONObject("responses").keySet().contains("200"))
                 {
@@ -63,10 +68,11 @@ public class TestFactory {
                     // end of class
                     testClassBuilder.append("}\n");
 
-                    testClasses.add(testClassBuilder.toString());
+                    organizedTests.get(organizingTag).add(testClassBuilder.toString());
 
                     testClassBuilder = new StringBuilder();
                 }
+                // import statements
                 testClassBuilder.append(importFactory.generateTestImportStatements(rqSpecs, serviceName, objectData));
                 // start of class declaration
                 testClassBuilder.append("public class Test").append(operationId).append("_Negative_Rest extends ").append(serviceName).append("BaseTest {\n");
@@ -75,26 +81,28 @@ public class TestFactory {
                 testClassBuilder.append("\n\t@Test()\n");
                 testClassBuilder.append("\tpublic void test").append(operationId).append("_Negative_Rest() {\n");
 
+                // parameter variables for the test
                 if (rqSpecs.has("parameters"))
                 {
                     testClassBuilder.append(generateTestParameters(rqSpecs.getJSONArray("parameters"), objectData));
                 }
 
-                testClassBuilder.append("\n\t\tRestResponse response = ").append(serviceName).append("Rest.").append(uncapitalize(serviceName)).append("(environment).").append(rqSpecs.getString("operationId"))
+                // skeleton of how to send the request
+                testClassBuilder.append("\n\t\tRestResponse response = ").append(serviceName).append("Rest.")
+                        .append(uncapitalize(serviceName)).append("(environment).").append(rqSpecs.getString("operationId"))
                         .append("();\n");
 
                 // end of test method
                 testClassBuilder.append("\t}\n");
 
-
                 // end of class
                 testClassBuilder.append("}\n");
 
-                testClasses.add(testClassBuilder.toString());
+                organizedTests.get(organizingTag).add(testClassBuilder.toString());
             }
         }
 
-        return testClasses;
+        return organizedTests;
     }
 
     private String generateTestParameters(JSONArray parameters, Map<String, List<Pair<String, String>>> objectData) {

@@ -4,6 +4,8 @@ import org.json.JSONObject;
 
 import java.io.*;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 public class FileHelper {
 
@@ -22,7 +24,7 @@ public class FileHelper {
         return new JSONObject(sb.toString());
     }
 
-    public static void writeToFiles(ArrayList<String> operationClasses, ArrayList<String> testClasses,
+    public static void writeToFiles(ArrayList<String> operationClasses, Map<String, List<String>> testClasses,
                                     ArrayList<String> commonObjects, ArrayList<String> requestClasses,
                                     ArrayList<String> responseClasses) throws IOException {
         String path = System.getProperty("user.home") + File.separator + "Desktop" + File.separator + "testOutput" + File.separator;
@@ -57,7 +59,7 @@ public class FileHelper {
 
             if (file.mkdir() || file.exists())
             {
-                writeArrayToFiles(testClasses, testClassesPath);
+                writeMapToFiles(testClasses, testClassesPath);
             }
 
             String commonObjectsPath = path + "commonObjects" + File.separator;
@@ -86,7 +88,16 @@ public class FileHelper {
         }
     }
 
-    private static void writeArrayToFiles(ArrayList<String> classes, String path) {
+    private static void writeMapToFiles(Map<String, List<String>> testClasses, String testClassesPath) {
+        for (String s : testClasses.keySet()) {
+            String path = TypeHelper.makeCamelCase(testClassesPath + s + File.separator);
+            if (new File(path).exists() || new File(path).mkdir()){
+                writeArrayToFiles(testClasses.get(s), path);
+            }
+        }
+    }
+
+    private static void writeArrayToFiles(List<String> classes, String path) {
         for (String s : classes){
             String fileName;
 

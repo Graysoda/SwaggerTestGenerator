@@ -97,7 +97,9 @@ public class OperationsFactory {
 //                            if (((JSONObject) parameterSpec).has("style")){
 //                                // TODO handle the style (it changes the delimiting character)
 //                            }
-                                String type = ((JSONObject) parameterSpec).has("schema") ? extractDataType(((JSONObject) parameterSpec).getJSONObject("schema")) : extractDataType((JSONObject) parameterSpec);
+                                String type = ((JSONObject) parameterSpec).has("schema")
+                                        ? extractDataType(((JSONObject) parameterSpec).getJSONObject("schema"))
+                                        : extractDataType((JSONObject) parameterSpec);
 
                                 if (type.contains("{"))
                                 {
@@ -145,15 +147,15 @@ public class OperationsFactory {
                 String endpointWithoutCommonPart = endpointPath.replace(commonPath, "");
 
                 // logic for parsing the variable name out of the path
-                if (endpointWithoutCommonPart.contains("{"))
+                if (endpointWithoutCommonPart.contains("{") && endpointWithoutCommonPart.indexOf("{") == endpointWithoutCommonPart.lastIndexOf("{"))
                 {
                     if (endpointWithoutCommonPart.indexOf("}") == endpointWithoutCommonPart.length()-1)
                     {
-                        classBuilder.append(" + \"").append(endpointWithoutCommonPart.replace("{", "\" + ").replace("}", ""));
+                        classBuilder.append(" + \"").append(endpointWithoutCommonPart.replace("{", "\" + String.valueOf(").replace("}", ")"));
                     }
                     else
                     {
-                        classBuilder.append(" + \"").append(endpointWithoutCommonPart.replace("{", "\" + ").replace("}", " + \"")).append("\"");
+                        classBuilder.append(" + \"").append(endpointWithoutCommonPart.replace("{", "\" + String.valueOf(").replace("}", ") + \"")).append("\"");
                     }
                 }
                 else
@@ -170,14 +172,33 @@ public class OperationsFactory {
                         if (paramSpec instanceof JSONObject && ((JSONObject) paramSpec).getString("in").equals("query"))
                         {
                             String name = makeCamelCase(((JSONObject) paramSpec).getString("name"));
+                            String type = ((JSONObject) paramSpec).has("schema") ? extractDataType(((JSONObject) paramSpec).getJSONObject("schema")) : extractDataType((JSONObject) paramSpec);
+
+                            if (type.contains("{"))
+                            {
+                                // removes any enum stuff since they'll need to be converted to strings anyway
+                                type = type.replace(type.substring(type.indexOf("{"), type.indexOf("}")+1), "");
+                            }
+
                             if (firstQueryParam)
                             {
-                                classBuilder.insert(classBuilder.lastIndexOf("\""),"?" + name + "=\" + " + name + " + ").deleteCharAt(classBuilder.lastIndexOf("\""));
+                                if (!type.equals("String")){
+                                    classBuilder.insert(classBuilder.lastIndexOf("\""),"?" + name + "=\" + String.valueOf(" + name + ") + ")
+                                            .deleteCharAt(classBuilder.lastIndexOf("\""));
+                                } else {
+                                    classBuilder.insert(classBuilder.lastIndexOf("\""),"?" + name + "=\" + " + name + " + ")
+                                            .deleteCharAt(classBuilder.lastIndexOf("\""));
+                                }
+
                                 firstQueryParam = false;
                             }
                             else
                             {
-                                classBuilder.append("\"&").append(name).append("=\" + ").append(name).append(" + ");
+                                if (!type.equals("String")){
+                                    classBuilder.append("\"&").append(name).append("=\" + String.valueOf(").append(name).append(") + ");
+                                } else {
+                                    classBuilder.append("\"&").append(name).append("=\" + ").append(name).append(" + ");
+                                }
                             }
                         }
                     }
@@ -260,7 +281,6 @@ public class OperationsFactory {
     }
 
     public List<String> generateServiceClasses(JSONArray tags, JSONObject paths, String serviceName, String basePath) {
-        serviceName = serviceName.replace(" ", "");
         List<String> subServices = new ArrayList<>();
         Map<String, List<Pair<String, String>>> tagsWithOpIdsAndEndpointPaths = new HashMap<>();
 
@@ -359,7 +379,7 @@ public class OperationsFactory {
                         {
                             nameDifferences = nameDifferences.replace("-" + t, "");
 
-                            if (restrictedNames.contains(nameDifferences))
+                            if (restrictedNames.contains(makeCamelCase(capitalize(nameDifferences))))
                             {
                                 nameDifferences = nameDifferences + "-" + t;
                             }
@@ -425,5 +445,48 @@ public class OperationsFactory {
         stringBuilder.append("}");
 
         return stringBuilder.toString();
+    }
+
+    public Map<String, String> processTags(JSONArray tags) {
+        Map<String, String> mapTagNameToNewName = new HashMap<>();
+
+        // initializing the map of tags to paths
+        for (Object o : tags)
+        {
+            if (o instanceof JSONObject)
+            {
+                mapTagNameToNewName.put(((JSONObject) o).getString("name"), "");
+            }
+        }
+
+        for(String originalName : mapTagNameToNewName.keySet()){
+            ArrayList<String> comparators = new ArrayList<>(mapTagNameToNewName.keySet());
+            comparators.remove(originalName);
+
+            for (String compare : comparators)
+            {
+                if (compare.contains("-") && originalName.contains("-"))
+                {
+                    String nameDifferences = originalName;
+
+                    for (String t : originalName.split("-"))
+                    {
+                        if (Arrays.asList(compare.split("-")).contains(t))
+                        {
+                            nameDifferences = nameDifferences.replace("-" + t, "");
+
+                            if (restrictedNames.contains(makeCamelCase(capitalize(nameDifferences))))
+                            {
+                                nameDifferences = nameDifferences + "-" + t;
+                            }
+                        }
+                    }
+
+                    mapTagNameToNewName.put(originalName, nameDifferences);
+                }
+            }
+        }
+
+        return mapTagNameToNewName;
     }
 }
