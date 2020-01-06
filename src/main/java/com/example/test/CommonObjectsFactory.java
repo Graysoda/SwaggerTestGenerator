@@ -3,7 +3,10 @@ package com.example.test;
 import javafx.util.Pair;
 import org.json.JSONObject;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static com.example.test.TypeHelper.*;
 
@@ -62,12 +65,12 @@ public class CommonObjectsFactory {
                         }
                         if (isNotStandardType(getListType(field.getValue())))
                         {
-                            stringBuilder.append("import com.").append(company).append(".api.restServices.").append(serviceName).append(".commonObjects.").append(getListType(field.getValue())).append(";\n");
+                            stringBuilder.append("import com.").append(company).append(".api.restServices.").append(uncapitalize(serviceName)).append(".commonObjects.").append(getListType(field.getValue())).append(";\n");
                         }
                     }
                     else if (isNotStandardType(field.getValue()))
                     {
-                        stringBuilder.append("import com.").append(company).append(".api.restServices.").append(serviceName).append(".commonObjects.").append(field.getValue()).append(";\n");
+                        stringBuilder.append("import com.").append(company).append(".api.restServices.").append(uncapitalize(serviceName)).append(".commonObjects.").append(field.getValue()).append(";\n");
                     }
                 }
 
@@ -122,7 +125,7 @@ public class CommonObjectsFactory {
                     String varName = capitalize(pair.getKey());
                     stringBuilder.append("\tpublic void set").append(varName) // name of setter
                             .append("(").append(pair.getValue()).append(" ").append(pair.getKey()).append("){\n") // method parameter
-                            .append("\t\tthis.").append(pair.getKey()).append(" = ").append(pair.getKey()).append("\n\t}\n\n"); // actual setting of the field
+                            .append("\t\tthis.").append(pair.getKey()).append(" = ").append(pair.getKey()).append(";\n\t}\n\n"); // actual setting of the field
                 }
 
                 stringBuilder.append("}"); // last curly brace
@@ -185,24 +188,5 @@ public class CommonObjectsFactory {
         restrictedNames.addAll(commonObjects.keySet());
 
         return commonObjects;
-    }
-
-    private List<String> splitCamelCase(String s){
-        int i = 0;
-        StringBuilder stringBuilder = new StringBuilder(s.substring(0,1));
-
-        for (char c : s.substring(1).toCharArray())
-        {
-            if (Character.isUpperCase(c))
-            {
-                stringBuilder.append(",").append(c);
-            }
-            else
-            {
-                stringBuilder.append(c);
-            }
-        }
-
-        return Arrays.asList(stringBuilder.toString().split(","));
     }
 }

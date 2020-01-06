@@ -1,15 +1,50 @@
 package com.example.test;
 
+import org.apache.commons.lang3.StringUtils;
 import org.json.JSONObject;
 
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-public class FileHelper {
+import static com.example.test.TypeHelper.makeCamelCase;
+import static com.example.test.TypeHelper.uncapitalize;
 
-    public static JSONObject readJsonFileIntoObject(String filePath) throws IOException {
+public class FileHelper {
+    private String company;
+    private String pomFile = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+            "<project xmlns=\"http://maven.apache.org/POM/4.0.0\"\n" +
+            "\t\txmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n" +
+            "\t\txsi:schemaLocation=\"http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd\">\n" +
+            "\t<modelVersion>4.0.0</modelVersion>\n" +
+            "\n" +
+            "\t<groupId>com." + company + ".api</groupId>\n" +
+            "\t<artifactId></artifactId>\n" +
+            "\t<version>1.0-SNAPSHOT</version>\n\n" +
+            "\t<properties>\n" +
+            "\t</properties>\n\n" +
+            "\t<dependencies>\n" +
+            "\t</dependencies>\n" +
+            "</project>";
+
+    public FileHelper(String company, String pathToPom){
+        this.company = company;
+        if (StringUtils.isNotEmpty(pathToPom)){
+            try {
+                pomFile = readFileToString(pathToPom);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public JSONObject readJsonFileIntoObject(String filePath) throws IOException {
+        return new JSONObject(readFileToString(filePath));
+    }
+
+    public String readFileToString(String filePath) throws IOException {
         BufferedReader reader = new BufferedReader(new FileReader(new File(filePath)));
         StringBuilder sb = new StringBuilder();
         String line = reader.readLine();
@@ -21,109 +56,327 @@ public class FileHelper {
 
         reader.close();
 
-        return new JSONObject(sb.toString());
+        return sb.toString();
     }
 
-    public static void writeToFiles(ArrayList<String> operationClasses, Map<String, List<String>> testClasses,
+    public void writeToFiles(ArrayList<String> operationClasses, Map<String, List<String>> testClasses,
                                     ArrayList<String> commonObjects, ArrayList<String> requestClasses,
-                                    ArrayList<String> responseClasses) throws IOException {
-        String path = System.getProperty("user.home") + File.separator + "Desktop" + File.separator + "testOutput" + File.separator;
+                                    ArrayList<String> responseClasses, String serviceName) throws IOException {
+        String path = System.getProperty("user.home") + File.separator + "Desktop" + File.separator + serviceName + File.separator;
 
         File file = new File(path);
 
-        if (file.mkdir() || file.exists())
-        {
-            String operationPath = path + "operationClasses" + File.separator;
-            file = new File(operationPath);
+        if (file.mkdirs() || file.exists()){
+            file = new File(path + "pom.xml");
 
-            if (file.mkdir() || file.exists())
-            {
-                String propertyFile = operationClasses.get(0);
-                operationClasses.remove(0);
+            if (file.createNewFile()){
+                BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(file.getAbsoluteFile()));
+                outputStream.write(pomFile.getBytes());
+                outputStream.flush();
+                outputStream.close();
+            }
 
-                file = new File(operationPath + propertyFile.substring(propertyFile.indexOf("_") + 1, propertyFile.indexOf(".")) + ".properties");
+            path = path + "src" + File.separator;
 
-                if (file.createNewFile())
-                {
-                    BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(file.getAbsoluteFile()));
-                    outputStream.write(propertyFile.getBytes());
-                    outputStream.flush();
-                    outputStream.close();
+            file = new File(path);
+
+            if (file.mkdirs() || file.exists()){
+                String main = path + "main" + File.separator;
+                String test = path + "test" + File.separator;
+
+                file = new File(main);
+
+                // src/main file/folder structure
+                if (file.mkdirs() || file.exists()){
+                    // property file for project
+                    String propertyFileLocation = main + "resources" + File.separator + "properties" + File.separator;
+                    file = new File(propertyFileLocation);
+
+                    if (file.mkdirs() || file.exists()){
+                        String propertyFile = operationClasses.get(0);
+                        operationClasses.remove(0);
+
+                        writeStringToFile(propertyFile, propertyFileLocation + makeCamelCase(serviceName) + ".properties");
+                    }
+                    // end of property file
+
+                    // src file structure
+                    String srcFolder = main + "java" + File.separator
+                            + "com" + File.separator
+                            + company + File.separator
+                            + "api" + File.separator
+                            + "restServices" + File.separator;
+                    file = new File(srcFolder);
+
+                    // base test and base rest classes
+                    if (file.mkdirs() || file.exists()){
+                        writeArrayToFiles(operationClasses.subList(0,2), srcFolder);
+                        operationClasses.remove(0);
+                        operationClasses.remove(0);
+                    }
+
+                    String serviceClassPath = srcFolder + uncapitalize(makeCamelCase(serviceName)) + File.separator;
+
+                    System.out.println(serviceClassPath);
+
+                    file = new File(serviceClassPath);
+
+                    // root service class
+                    if (file.mkdirs() || file.exists()){
+                        for (String s : operationClasses){
+                            if (extractClassName(s).equals(serviceName + "Service")){
+                                writeStringToFile(s, serviceClassPath + extractClassName(s) + ".java");
+                                operationClasses.remove(s);
+                                break;
+                            }
+                        }
+                    }
+
+                    // sub services
+                    for (String opClass : operationClasses){
+                        String subServicePath = serviceClassPath + uncapitalize(extractClassName(opClass)) + File.separator;
+                        file = new File(subServicePath);
+
+                        if (file.mkdirs() || file.exists()){
+                            writeStringToFile(opClass, subServicePath + extractClassName(opClass) + ".java");
+
+                            String requestsPath = subServicePath + "requests" + File.separator;
+                            file = new File(requestsPath);
+                            List<String> requests = new ArrayList<>();
+
+                            if (file.mkdirs() || file.exists()){
+                                List<String> rqNames = extractRequestsRequired(opClass);
+                                for (String rqClass : requestClasses){
+                                    String rqClassName = extractClassName(rqClass);
+                                    if (rqNames.contains(rqClassName)){
+                                        requests.add(rqClass);
+                                        writeStringToFile(rqClass, requestsPath + rqClassName + ".java");
+                                    }
+                                }
+                            }
+
+                            String responsesPath = subServicePath + "responses" + File.separator;
+                            file = new File(responsesPath);
+                            List<String> responses = new ArrayList<>();
+
+                            if (file.mkdirs() || file.exists()){
+                                List<String> responseNames = extractResponsesRequired(opClass);
+                                for (String responseClass : responseClasses){
+                                    String responseClassName = makeCamelCase(extractClassName(responseClass));
+                                    if (responseNames.contains(responseClassName)){
+                                        responses.add(responseClass);
+                                        writeStringToFile(responseClass, responsesPath + responseClassName + ".java");
+                                    }
+                                }
+                            }
+
+                            String commonObjectsPath = subServicePath + "commonObjects" + File.separator;
+                            file = new File(commonObjectsPath);
+
+                            if (file.mkdirs() || file.exists()){
+                                List<String> commonObjectNames = extractObjectsFromImportStatements(requests);
+
+                                extractObjectsFromImportStatements(responses).forEach(
+                                        s -> {
+                                            if (!commonObjectNames.contains(s)){
+                                                commonObjectNames.add(s);
+                                            }
+                                        });
+
+                                populateCommonObjects(commonObjectNames, commonObjects, commonObjectsPath);
+                            }
+                        }
+                    }
                 }
 
-                writeArrayToFiles(operationClasses, operationPath);
-            }
+                file = new File(test);
 
-            String testClassesPath = path + "testClasses" + File.separator;
-            file = new File(testClassesPath);
+                // src/test file/folder
+                if (file.mkdirs() || file.exists()){
+                    String testFolder = test + "java" + File.separator
+                            + "com" + File.separator
+                            + company + File.separator
+                            + "composite" + File.separator
+                            + "api" + File.separator
+                            + uncapitalize(serviceName) + "Module" + File.separator
+                            + "restServices" + File.separator
+                            + uncapitalize(serviceName) + File.separator;
 
-            if (file.mkdir() || file.exists())
-            {
-                writeMapToFiles(testClasses, testClassesPath);
-            }
+                    file = new File(testFolder);
 
-            String commonObjectsPath = path + "commonObjects" + File.separator;
-            file = new File(commonObjectsPath);
+                    if (file.mkdirs() || file.exists()){
+                        for (String key : testClasses.keySet()){
+                            String testSectionFolder = testFolder + uncapitalize(makeCamelCase(key)) + File.separator;
+                            file = new File(testSectionFolder);
 
-            if (file.mkdir() || file.exists())
-            {
-                writeArrayToFiles(commonObjects, commonObjectsPath);
-            }
+                            if (file.mkdirs() || file.exists()){
+                                writeArrayToFiles(testClasses.get(key), testSectionFolder);
+                            }
+                        }
+                    }
+                }
 
-            String requestClassPath = path + "requestClasses" + File.separator;
-            file = new File(requestClassPath);
+                String testResources = test
+                        + "resources" + File.separator
+                        + "com" + File.separator
+                        + company + File.separator
+                        + "composite" + File.separator
+                        + "api" + File.separator
+                        + makeCamelCase(serviceName) + "Module" + File.separator
+                        + "restServices" + File.separator;
 
-            if (file.mkdir() || file.exists())
-            {
-                writeArrayToFiles(requestClasses, requestClassPath);
-            }
+                file = new File(testResources);
 
-            String responseClassPath = path + "responseClasses" + File.separator;
-            file = new File(responseClassPath);
+                if (file.mkdirs() || file.exists()){
+                    for (String key  : testClasses.keySet()){
+                        file = new File(testResources + key);
 
-            if (file.mkdir() || file.exists())
-            {
-                writeArrayToFiles(responseClasses, responseClassPath);
+                        if (file.mkdirs() || file.exists()){
+
+                        }
+                    }
+                }
             }
         }
     }
 
-    private static void writeMapToFiles(Map<String, List<String>> testClasses, String testClassesPath) {
-        for (String s : testClasses.keySet()) {
-            String path = TypeHelper.makeCamelCase(testClassesPath + s + File.separator);
-            if (new File(path).exists() || new File(path).mkdir()){
-                writeArrayToFiles(testClasses.get(s), path);
+    private void populateCommonObjects(List<String> commonObjectNames, List<String> allCommonObjects, String filePath) {
+        for (String s : allCommonObjects){
+            String className = extractClassName(s);
+            if (commonObjectNames.contains(className)){
+                writeStringToFile(fixImports(s, filePath), filePath + className + ".java");
+                List<String> commonObjectImports = extractObjectsFromImportStatements(Collections.singletonList(s));
+                if (!commonObjectImports.isEmpty()){
+                    populateCommonObjects(commonObjectImports, allCommonObjects, filePath);
+                }
             }
         }
     }
 
-    private static void writeArrayToFiles(List<String> classes, String path) {
+
+
+    public static String extractClassName(String clazz) {
+        if (clazz.split("\n")[0].contains(" enum ")) {
+            return clazz.split(" ")[2];
+        } else {
+            return clazz.split("public class ")[1].split(" ")[0];
+        }
+    }
+
+    private List<String> extractObjectsFromImportStatements(List<String> classes) {
+        List<String> coNames = new ArrayList<>();
+
+        for (String clazz : classes){
+            for (String line : clazz.split("\n")){
+                if (line.contains("import")){
+                    String name = line.split("\\.")[line.split("\\.").length-1].replace(";", "");
+                    if (!coNames.contains(name)){
+                        coNames.add(name);
+                    }
+                }
+            }
+        }
+
+        return coNames;
+    }
+
+    private List<String> extractResponsesRequired(String opClass) {
+        ArrayList<String> responseClassNames = new ArrayList<>();
+        for (String s : opClass.split("\\(Map<String, String> headers, ")){
+            if (s.split("\\)")[0].contains("request")){
+                responseClassNames.add(s.split("\\)")[0].split(" ")[0].replace("Request", "Response"));
+            }
+        }
+        return responseClassNames;
+    }
+
+    private List<String> extractRequestsRequired(String opClass) {
+        ArrayList<String> requestClassNames = new ArrayList<>();
+        for (String s : opClass.split("\\(Map<String, String> headers, ")){
+            if (s.split("\\)")[0].contains("request")){
+                requestClassNames.add(s.split("\\)")[0].split(" ")[0]);
+            }
+        }
+        return requestClassNames;
+    }
+
+    public void writeArrayToFiles(List<String> classes, String path) {
         for (String s : classes){
-            String fileName;
+            writeStringToFile(s, path + extractClassName(s) + ".java");
+        }
+    }
 
-            if (s.split("\n")[0].contains(" enum ")){
-                fileName = path + s.split(" ")[2] + ".java";
-            } else {
-                fileName = path + s.split("public class ")[1].split(" ")[0] + ".java";
+    private String fixImports(String clazz, String filePath) {
+        if (clazz.contains("public enum ")){
+            return clazz;
+        }
+        ArrayList<String> importStatements = extractImportStatements(clazz);
+        String importPath = filePath.substring(0, filePath.lastIndexOf(File.separator)).replace(File.separatorChar, '.');
+        String missingPart = importPath.split("\\.")[importPath.split("\\.").length-2];
+
+        for (String s : importStatements){
+            clazz = clazz.replace(s, s.replace("commonObjects", missingPart + ".commonObjects"));
+        }
+
+        return clazz;
+    }
+
+    private ArrayList<String> extractImportStatements(String clazz) {
+        ArrayList<String> importStatements = new ArrayList<>();
+
+        for (String line : clazz.split("\n")){
+            if (line.contains("import com." + company + ".")){
+                importStatements.add(line);
             }
+        }
 
-            File file = new File(fileName);
+        return importStatements;
+    }
 
-            try {
-                if (file.createNewFile()){
-                    BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(fileName));
-                    outputStream.write(s.getBytes());
-                    outputStream.flush();
-                    outputStream.close();
-                } else if (file.delete() && file.createNewFile()){
-                    BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(fileName));
-                    outputStream.write(s.getBytes());
-                    outputStream.flush();
-                    outputStream.close();
+    private void writeStringToFile(String fileContent, String pathToFile){
+        StringBuilder pkgStatement = new StringBuilder("package ");
+        File file = new File(pathToFile);
+
+        if (pathToFile.endsWith(".java")){
+            boolean isAfterCom = false;
+            String[] splitPath = pathToFile.replace(File.separatorChar, '.').split("\\.");
+            for (int i = 0; i < splitPath.length; i++){
+                if (splitPath[i].equals("com")){
+                    isAfterCom = true;
                 }
-            } catch (IOException e) {
-                e.printStackTrace();
+                if (isAfterCom){
+                    pkgStatement.append(splitPath[i]).append(".");
+                }
             }
+
+            pkgStatement.deleteCharAt(pkgStatement.lastIndexOf("."));
+            pkgStatement.delete(pkgStatement.lastIndexOf("."), pkgStatement.length());
+            pkgStatement.delete(pkgStatement.lastIndexOf("."), pkgStatement.length());
+
+            pkgStatement.append(";\n\n");
+        }
+
+        try {
+            if (file.createNewFile()){
+                BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(pathToFile));
+                if (!pkgStatement.toString().isEmpty()){
+                    outputStream.write(pkgStatement.toString().getBytes());
+                }
+                outputStream.write(fileContent.getBytes());
+                outputStream.flush();
+                outputStream.close();
+            } else if (file.delete() && file.createNewFile()){
+                BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(pathToFile));
+                if (!pkgStatement.toString().isEmpty()){
+                    outputStream.write(pkgStatement.toString().getBytes());
+                }
+                outputStream.write(fileContent.getBytes());
+                outputStream.flush();
+                outputStream.close();
+            }
+        } catch (IOException e) {
+            System.out.println(pathToFile);
+            e.printStackTrace();
         }
     }
 }

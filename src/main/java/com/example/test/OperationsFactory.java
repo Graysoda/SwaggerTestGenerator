@@ -11,14 +11,16 @@ import static com.example.test.TypeHelper.*;
 public class OperationsFactory {
     private String company = "example";
     private ImportFactory importFactory;
+    private String serviceName;
 
     public OperationsFactory(){
         importFactory = new ImportFactory();
     }
 
-    public OperationsFactory(String company){
+    public OperationsFactory(String company, String serviceName){
         this.company = company;
         importFactory = new ImportFactory(company);
+        this.serviceName = serviceName;
     }
 
     public ArrayList<String> generateOperationClasses(String serviceName, String basePath, String host, JSONObject paths, JSONArray tags) {
@@ -27,7 +29,6 @@ public class OperationsFactory {
         operationClasses.add(generatePropertiesFile(serviceName, host));
         operationClasses.add(generateBaseTestClass(serviceName));
         operationClasses.add(generateBaseRestClass(serviceName));
-        operationClasses.add(generateServiceClass(serviceName, basePath));
         operationClasses.addAll(generateServiceClasses(tags, paths, serviceName, basePath));
 
         return operationClasses;
@@ -36,7 +37,7 @@ public class OperationsFactory {
     private String generateServerInterfaceClass(String title, JSONObject paths, String commonPath) {
         StringBuilder classBuilder = new StringBuilder();
         String serviceName = capitalize(title.replace(" ", ""));
-        classBuilder.append(importFactory.generateInterfaceImportStatements(paths, serviceName));
+        classBuilder.append(importFactory.generateInterfaceImportStatements(paths, this.serviceName + "." + uncapitalize(title.replace(" ", ""))));
 
         String commonPartOfMethodDeclaration = "\n\tpublic RestResponse ";
 
@@ -183,10 +184,10 @@ public class OperationsFactory {
                             if (firstQueryParam)
                             {
                                 if (!type.equals("String")){
-                                    classBuilder.insert(classBuilder.lastIndexOf("\""),"?" + name + "=\" + String.valueOf(" + name + ") + ")
+                                    classBuilder.insert(classBuilder.lastIndexOf("\""),"?" + name + "=\" + String.valueOf(" + name + ")")
                                             .deleteCharAt(classBuilder.lastIndexOf("\""));
                                 } else {
-                                    classBuilder.insert(classBuilder.lastIndexOf("\""),"?" + name + "=\" + " + name + " + ")
+                                    classBuilder.insert(classBuilder.lastIndexOf("\""),"?" + name + "=\" + " + name)
                                             .deleteCharAt(classBuilder.lastIndexOf("\""));
                                 }
 
@@ -195,9 +196,9 @@ public class OperationsFactory {
                             else
                             {
                                 if (!type.equals("String")){
-                                    classBuilder.append("\"&").append(name).append("=\" + String.valueOf(").append(name).append(") + ");
+                                    classBuilder.append(" + \"&").append(name).append("=\" + String.valueOf(").append(name).append(")");
                                 } else {
-                                    classBuilder.append("\"&").append(name).append("=\" + ").append(name).append(" + ");
+                                    classBuilder.append(" + \"&").append(name).append("=\" + ").append(name);
                                 }
                             }
                         }
@@ -240,7 +241,8 @@ public class OperationsFactory {
                 "\tpublic static " + serviceName + "Service " + uncapitalize(serviceName) + "Service(String environment) {\n" +
                 "\t\tRestService = new RestService(environment);\n" +
                 "\t\treturn new " + serviceName + "Service(restService);\n" +
-                "\t}\n";
+                "\t}\n" +
+                "}";
     }
 
     private String generateServiceClass(String serviceName, String basePath) {
@@ -379,7 +381,7 @@ public class OperationsFactory {
                         {
                             nameDifferences = nameDifferences.replace("-" + t, "");
 
-                            if (restrictedNames.contains(makeCamelCase(capitalize(nameDifferences))))
+                            if (restrictedNames.contains(nameDifferences.toLowerCase()))
                             {
                                 nameDifferences = nameDifferences + "-" + t;
                             }
@@ -421,24 +423,30 @@ public class OperationsFactory {
     }
 
     private String generateBaseServiceClass(Map<String, String> tagOldAndNewNamePairs, String serviceName, String basePath) {
-        StringBuilder stringBuilder = new StringBuilder("import com." + company + ".api.restServices.core.RestService;\n" +
-                "import com." + company + ".api.restServices." + uncapitalize(serviceName) + "." + serviceName + ";\n\n" +
-                "public class " + serviceName + "Service {\n" +
+        StringBuilder stringBuilder = new StringBuilder("import com." + company + ".api.restServices.core.RestService;\n");
+
+        for (String subSections : tagOldAndNewNamePairs.values()){
+            stringBuilder.append("import com.").append(company).append(".api.restServices.").append(uncapitalize(serviceName)).append(".")
+                    .append(uncapitalize(makeCamelCase(subSections))).append(".").append(capitalize(makeCamelCase(subSections))).append(";\n");
+        }
+
+        stringBuilder.append("public class ").append(serviceName).append("Service {\n")
+                .append(
                 // global variables
-                "\tprivate RestService restService;\n" +
-                "\tprivate String resource = \"" + basePath + "\";\n" +
-                "\tprivate final static String strProperties = \"properties/" + makePropertyFileName(serviceName) + "\";\n" +
-                "\n" +
+                "\tprivate RestService restService;\n")
+                .append("\tprivate String resource = \"").append(basePath).append("\";\n")
+                .append("\tprivate final static String strProperties = \"properties/").append(makePropertyFileName(serviceName)).append("\";\n")
+                .append("\n").append(
                 // constructor
-                "\tpublic " + serviceName + "(RestService restService) {\n" +
-                "\t\tthis.restService = restService;\n" +
-                "\t\tthis.restService.setMainResource(\"REST_" + serviceName + "Service\");\n" +
-                "\t}\n");
+                "\tpublic ").append(serviceName).append("Service").append("(RestService restService) {\n")
+                .append("\t\tthis.restService = restService;\n")
+                .append("\t\tthis.restService.setMainResource(\"REST_").append(serviceName).append("Service\");\n")
+                .append("\t}\n");
 
         for (String newTag : tagOldAndNewNamePairs.values()){
             // method to get the server interface class
-            stringBuilder.append("\n\tpublic ").append(makeCamelCase(capitalize(newTag))).append(" ").append(makeCamelCase(uncapitalize(newTag))).append("() {\n")
-                    .append("\t\treturn new ").append(makeCamelCase(capitalize(newTag))).append("(restService, resource);\n")
+            stringBuilder.append("\n\tpublic ").append(capitalize(makeCamelCase(newTag))).append(" ").append(makeCamelCase(uncapitalize(newTag))).append("() {\n")
+                    .append("\t\treturn new ").append(capitalize(makeCamelCase(newTag))).append("(restService, resource);\n")
                     .append("\t}\n");
         }
 
@@ -449,18 +457,19 @@ public class OperationsFactory {
 
     public Map<String, String> processTags(JSONArray tags) {
         Map<String, String> mapTagNameToNewName = new HashMap<>();
+        ArrayList<String> strings = new ArrayList<>();
 
         // initializing the map of tags to paths
         for (Object o : tags)
         {
             if (o instanceof JSONObject)
             {
-                mapTagNameToNewName.put(((JSONObject) o).getString("name"), "");
+                strings.add(((JSONObject) o).getString("name"));
             }
         }
 
-        for(String originalName : mapTagNameToNewName.keySet()){
-            ArrayList<String> comparators = new ArrayList<>(mapTagNameToNewName.keySet());
+        for(String originalName : strings){
+            ArrayList<String> comparators = new ArrayList<>(strings);
             comparators.remove(originalName);
 
             for (String compare : comparators)
@@ -475,14 +484,17 @@ public class OperationsFactory {
                         {
                             nameDifferences = nameDifferences.replace("-" + t, "");
 
-                            if (restrictedNames.contains(makeCamelCase(capitalize(nameDifferences))))
+                            if (restrictedNames.contains(nameDifferences.toLowerCase()))
                             {
                                 nameDifferences = nameDifferences + "-" + t;
                             }
                         }
                     }
 
-                    mapTagNameToNewName.put(originalName, nameDifferences);
+                    if (!mapTagNameToNewName.containsKey(originalName))
+                    {
+                        mapTagNameToNewName.put(originalName, nameDifferences);
+                    }
                 }
             }
         }

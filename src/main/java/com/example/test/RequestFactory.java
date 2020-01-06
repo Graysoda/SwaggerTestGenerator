@@ -1,12 +1,10 @@
 package com.example.test;
 
-import javafx.util.Pair;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 
 import static com.example.test.TypeHelper.*;
@@ -24,7 +22,7 @@ public class RequestFactory {
         importFactory = new ImportFactory(company);
     }
 
-    public ArrayList<String> generateRequestClasses(JSONObject paths, Map<String, List<Pair<String, String>>> objectData, String serviceName) {
+    public ArrayList<String> generateRequestClasses(JSONObject paths, String serviceName, Map<String, String> tagMap) {
         ArrayList<String> requestClasses = new ArrayList<>();
 
         for (String s : paths.keySet())
@@ -42,7 +40,7 @@ public class RequestFactory {
                 if (!parameters.toList().isEmpty())
                 {
                     // import statements
-                    classStructureStringBuilder.append(importFactory.generateRequestImportStatements(parameters, serviceName));
+                    classStructureStringBuilder.append(importFactory.generateRequestImportStatements(parameters, serviceName, tagMap.get(rqSpecifications.getJSONArray("tags").getString(0))));
 
                     //first line of the class declaration
                     classStructureStringBuilder.append("public class ").append(capitalize(rqSpecifications.getString("operationId"))).append("Request {\n");

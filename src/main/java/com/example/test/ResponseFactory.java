@@ -1,10 +1,8 @@
 package com.example.test;
 
-import javafx.util.Pair;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 
 import static com.example.test.TypeHelper.*;
@@ -20,7 +18,7 @@ public class ResponseFactory {
         importFactory = new ImportFactory(company);
     }
 
-    public ArrayList<String> generateResponseClasses(JSONObject paths, Map<String, List<Pair<String, String>>> objectData, String serviceName) throws Exception {
+    public ArrayList<String> generateResponseClasses(JSONObject paths, String serviceName, Map<String, String> tagMap) throws Exception {
         ArrayList<String> responseClasses = new ArrayList<>();
 
         for (String s : paths.keySet())
@@ -46,7 +44,7 @@ public class ResponseFactory {
                             StringBuilder fieldAccessors = new StringBuilder();
 
                             // import statements
-                            classStructureStringBuilder.append(importFactory.generateResponseImportStatements(responses, serviceName));
+                            classStructureStringBuilder.append(importFactory.generateResponseImportStatements(responses, serviceName, tagMap.get(rqSpecifications.getJSONArray("tags").getString(0))));
 
                             //first line of the class declaration
                             classStructureStringBuilder.append("public class ").append(capitalize(rqSpecifications.getString("operationId"))).append("Response {\n");

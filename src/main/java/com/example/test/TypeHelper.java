@@ -35,7 +35,12 @@ public class TypeHelper {
         if (s.contains("-")){
             String[] split = s.split("-");
             for (int i = 0; i < split.length; i++) {
-                newString.append((i > 0) ? capitalize(split[i]) : split[i]);
+                newString.append((i > 0) ? capitalize(split[i]) : uncapitalize(split[i]));
+            }
+        } else if (s.contains(" ")){
+            String[] split = s.split(" ");
+            for (int i = 0; i < split.length; i++) {
+                newString.append((i > 0) ? capitalize(split[i]) : uncapitalize(split[i]));
             }
         } else {
             return s;
@@ -57,11 +62,11 @@ public class TypeHelper {
     }
 
     public static String generateAccessors(String type, String name) {
-        return "\tpublic " + type + " get" + capitalize(name) + "{\n"
+        return "\tpublic " + type + " get" + capitalize(name) + "(){\n"
                 + "\t\treturn " + name + ";\n"
                 + "\t}\n"
                 + "\tpublic void set" + capitalize(name) + "(" + type + " " + name + ") " + "{\n"
-                + "\t\tthis." + name + " = " + name + "\n"
+                + "\t\tthis." + name + " = " + name + ";\n"
                 + "\t}\n";
     }
 

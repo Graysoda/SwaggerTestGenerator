@@ -45,7 +45,7 @@ public class TestFactory {
                 if (rqSpecs.getJSONObject("responses").keySet().contains("200"))
                 {
                     // import statements
-                    testClassBuilder.append(importFactory.generateTestImportStatements(rqSpecs, serviceName, objectData));
+                    testClassBuilder.append(importFactory.generateTestImportStatements(rqSpecs, serviceName, objectData, organizingTag));
 
                     // start of class declaration
                     testClassBuilder.append("public class Test").append(operationId).append("_Positive_Rest extends ").append(serviceName).append("BaseTest {\n");
@@ -59,7 +59,10 @@ public class TestFactory {
                         testClassBuilder.append(generateTestParameters(rqSpecs.getJSONArray("parameters"), objectData));
                     }
 
-                    testClassBuilder.append("\n\t\tRestResponse response = ").append(serviceName).append("Rest.").append(uncapitalize(serviceName)).append("(environment).").append(uncapitalize(operationId))
+                    testClassBuilder.append("\n\t\tRestResponse response = ")
+                            .append(serviceName).append("Rest.")
+                            .append(uncapitalize(serviceName)).append("Service(environment).")
+                            .append(organizingTag).append("().").append(uncapitalize(operationId))
                             .append("();\n");
 
                     // end of test method
@@ -73,7 +76,7 @@ public class TestFactory {
                     testClassBuilder = new StringBuilder();
                 }
                 // import statements
-                testClassBuilder.append(importFactory.generateTestImportStatements(rqSpecs, serviceName, objectData));
+                testClassBuilder.append(importFactory.generateTestImportStatements(rqSpecs, serviceName, objectData, organizingTag));
                 // start of class declaration
                 testClassBuilder.append("public class Test").append(operationId).append("_Negative_Rest extends ").append(serviceName).append("BaseTest {\n");
 
@@ -89,7 +92,8 @@ public class TestFactory {
 
                 // skeleton of how to send the request
                 testClassBuilder.append("\n\t\tRestResponse response = ").append(serviceName).append("Rest.")
-                        .append(uncapitalize(serviceName)).append("(environment).").append(rqSpecs.getString("operationId"))
+                        .append(uncapitalize(serviceName)).append("Service(environment).")
+                        .append(organizingTag).append("().").append(rqSpecs.getString("operationId"))
                         .append("();\n");
 
                 // end of test method
